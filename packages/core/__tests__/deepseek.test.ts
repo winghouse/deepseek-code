@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { MODEL_PRO, MODEL_FLASH } from 'deepseek-code-shared';
+import type { ChatOptions } from '../src/model/types.js';
 
 describe('DeepSeekClient — 模型配置', () => {
   it('MODEL_PRO 常量正确', () => {
@@ -19,5 +20,22 @@ describe('DeepSeekClient — 模型配置', () => {
     const cfg = { apiKey: 'sk-test', baseUrl: 'https://custom.api.com', timeout: 60000 };
     expect(cfg.baseUrl).toBe('https://custom.api.com');
     expect(cfg.timeout).toBe(60000);
+  });
+});
+
+describe('Function Strict — tool_choice', () => {
+  it('toolChoice 支持 required', () => {
+    const opts: ChatOptions = { toolChoice: 'required' };
+    expect(opts.toolChoice).toBe('required');
+  });
+
+  it('toolChoice 支持 auto', () => {
+    const opts: ChatOptions = { toolChoice: 'auto' };
+    expect(opts.toolChoice).toBe('auto');
+  });
+
+  it('toolChoice 支持强制指定工具', () => {
+    const opts: ChatOptions = { toolChoice: { type: 'function', function: { name: 'read_file' } } };
+    expect(opts.toolChoice).toEqual({ type: 'function', function: { name: 'read_file' } });
   });
 });
