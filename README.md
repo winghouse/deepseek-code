@@ -27,7 +27,10 @@
 # npm 全局安装（推荐）
 npm i -g deepseek-codecli
 
-# 或从源码安装
+# Docker
+docker run -e DEEPSEEK_API_KEY=sk-xxxx winghouse/deepseek-code "解释项目"
+
+# 从源码安装
 git clone https://github.com/winghouse/deepseek-code.git
 cd deepseek-code
 pnpm install
