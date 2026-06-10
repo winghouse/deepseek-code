@@ -318,11 +318,14 @@ export async function continueLoop(
 
       // DeepSeek V4: 审查/审计任务提升推理深度
       const isAudit = /审查|审计|检查.*优化|代码质量|安全.*漏洞|架构.*问题/i.test(session.taskDescription);
+      // 第一轮强制工具调用（修复/定位类任务必须读文件，不准猜）
+      const forceFirstTool = stepIndex === 1 && /修复|定位|排查|debug|报错|错误/i.test(session.taskDescription);
       const response = await withSpinner(
         model.chat(messages, {
           tools: availableTools,
           temperature: 0.3,
           reasoningEffort: isAudit ? 'high' : undefined,
+          toolChoice: forceFirstTool ? 'required' : 'auto',
         }),
         '模型思考中',
       );

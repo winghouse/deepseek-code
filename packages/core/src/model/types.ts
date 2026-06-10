@@ -31,7 +31,7 @@ export interface ChatOptions {
   /** 最大输出 token */
   maxTokens?: number;
   /** 强制使用工具 */
-  toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+  toolChoice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
   /** 系统提示词（如果不放在 messages 里） */
   systemPrompt?: string;
   /** JSON 模式 (DeepSeek V4 response_format) */

@@ -135,19 +135,15 @@ export function buildSessionPrefix(
   task: string,
   plan: ExecutionPlan | null,
   phase: string,
-  knownFiles: string[],
   mode: string,
 ): string {
+  // 注意: knownFiles 已移到 Dynamic Tail，避免每轮变化破坏 Session KV Cache
   return stableJoin('\n', [
     `## 任务: ${task}`,
     `阶段: ${phase}`,
     `模式: ${mode}`,
     '',
     plan ? `## 计划\n${formatPlanStable(plan)}` : '',
-    '',
-    knownFiles.length > 0
-      ? `## 已知文件\n${[...knownFiles].sort().map((f) => `- ${f}`).join('\n')}`
-      : '',
   ]);
 }
 
@@ -168,9 +164,13 @@ export function buildDynamicTail(
   toolResults?: string,
   errors?: string,
   gitDiff?: string,
+  knownFiles?: string[],
 ): string {
   return stableJoin('\n', [
     `## 当前输入\n${userInput}`,
+    knownFiles && knownFiles.length > 0
+      ? `## 已知文件\n${[...knownFiles].sort().map((f) => `- ${f}`).join('\n')}`
+      : '',
     toolResults ? `## 工具结果\n${toolResults}` : '',
     errors ? `## 报错\n${errors}` : '',
     gitDiff ? `## Git Diff\n${gitDiff}` : '',
@@ -197,10 +197,10 @@ export function buildPrompt(params: {
   const runtimePrefix = buildRuntimePrefix();
   const projectPrefix = buildProjectPrefix(params.repoInfo);
   const sessionPrefix = buildSessionPrefix(
-    params.task, params.plan, params.phase, params.knownFiles, params.mode,
+    params.task, params.plan, params.phase, params.mode,
   );
   const dynamicTail = buildDynamicTail(
-    params.userInput, params.toolResults, params.errors, params.gitDiff,
+    params.userInput, params.toolResults, params.errors, params.gitDiff, params.knownFiles,
   );
 
   return {
