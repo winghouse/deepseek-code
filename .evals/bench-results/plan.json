@@ -1,0 +1,1502 @@
+[
+  {
+    "id": "plan_0",
+    "input": "审查当前项目代码",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目根目录下的package.json文件\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取项目根目录下的README.md文件\",\"targetFiles\":[\"README.md\"]",
+    "latencyMs": 3337,
+    "tokensPrompt": 63,
+    "tokensCompletion": 334,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_1",
+    "input": "审查 packages/core/src/agent/router.ts",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取router.ts文件\",\"targetFiles\":[\"packages/core/src/agent/router.ts\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取相关依赖文件\",\"targetFiles\":[\"packages/cor",
+    "latencyMs": 2535,
+    "tokensPrompt": 67,
+    "tokensCompletion": 218,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_2",
+    "input": "分析项目架构",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目根目录的package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取项目根目录的tsconfig.json或jsconfig.json\",\"targetFiles\":[",
+    "latencyMs": 2771,
+    "tokensPrompt": 62,
+    "tokensCompletion": 275,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_3",
+    "input": "检查安全漏洞",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取package-lock.json\",\"targetFiles\":[\"package-lock.json\"]},",
+    "latencyMs": 2521,
+    "tokensPrompt": 62,
+    "tokensCompletion": 198,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_4",
+    "input": "审查代码质量",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件\",\"targetFiles\":[\"package.json\",\"tsconfig.json\",\"eslintrc.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索代码中的硬编码字符串和魔法数字\",\"targetFiles\"",
+    "latencyMs": 3029,
+    "tokensPrompt": 62,
+    "tokensCompletion": 279,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_5",
+    "input": "检查有没有死代码",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目入口文件（如index.js或main.js）\",\"targetFiles\":[\"index.js\",\"main.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索所有被引用的函数和变量定义\",\"targetFiles\":[\"*.js",
+    "latencyMs": 2468,
+    "tokensPrompt": 63,
+    "tokensCompletion": 208,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_6",
+    "input": "审查类型安全",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取tsconfig.json\",\"targetFiles\":[\"tsconfig.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索any类型使用\",\"targetFiles\":[\"**/*.ts\",\"**/*.tsx\"],\"patte",
+    "latencyMs": 4082,
+    "tokensPrompt": 62,
+    "tokensCompletion": 282,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_7",
+    "input": "分析性能瓶颈",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件\",\"targetFiles\":[\"package.json\",\"tsconfig.json\",\"webpack.config.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索高耗时操作\",\"targetFiles\":[\"*",
+    "latencyMs": 3361,
+    "tokensPrompt": 62,
+    "tokensCompletion": 265,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_8",
+    "input": "审查错误处理",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取错误处理相关配置文件\",\"targetFiles\":[\"error-handling.config.json\",\"error-codes.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索全局错误处理中间件\",\"targetFiles",
+    "latencyMs": 3534,
+    "tokensPrompt": 62,
+    "tokensCompletion": 284,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_9",
+    "input": "检查测试覆盖",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取测试配置文件\",\"targetFiles\":[\"jest.config.js\",\"jest.config.ts\",\".jestrc\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找测试文件\",\"targetFiles\":[\"**/*.test",
+    "latencyMs": 2130,
+    "tokensPrompt": 62,
+    "tokensCompletion": 164,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_10",
+    "input": "审查依赖安全",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取package-lock.json或yarn.lock\",\"targetFiles\":[\"package-loc",
+    "latencyMs": 1878,
+    "tokensPrompt": 62,
+    "tokensCompletion": 158,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_11",
+    "input": "分析项目结构",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目根目录文件列表\",\"targetFiles\":[\".\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取package.json获取项目元信息\",\"targetFiles\":[\"package.json\"]},{\"order\":3,\"actio",
+    "latencyMs": 2245,
+    "tokensPrompt": 62,
+    "tokensCompletion": 177,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_12",
+    "input": "审查配置文件",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取配置文件内容\",\"targetFiles\":[\"config.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索配置项中的敏感信息\",\"targetFiles\":[\"config.json\"]},{\"order\":3,\"action\"",
+    "latencyMs": 2034,
+    "tokensPrompt": 61,
+    "tokensCompletion": 146,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_13",
+    "input": "检查硬编码密钥",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"search\",\"description\":\"搜索常见密钥模式如API密钥、密码、令牌\",\"targetFiles\":[\"*.js\",\"*.py\",\"*.java\",\"*.ts\",\"*.json\",\"*.yaml\",\"*.env\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取.env文件检",
+    "latencyMs": 3081,
+    "tokensPrompt": 63,
+    "tokensCompletion": 253,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_14",
+    "input": "审查交互逻辑",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取交互逻辑相关文件\",\"targetFiles\":[\"interaction.js\",\"interaction.ts\",\"interaction.py\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索事件绑定代码\",\"targetFiles\":",
+    "latencyMs": 3485,
+    "tokensPrompt": 62,
+    "tokensCompletion": 284,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_15",
+    "input": "分析数据流",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取数据源配置文件\",\"targetFiles\":[\"datasource.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取数据流定义文件\",\"targetFiles\":[\"dataflow.json\"]},{\"order\":3,\"acti",
+    "latencyMs": 2305,
+    "tokensPrompt": 62,
+    "tokensCompletion": 189,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_16",
+    "input": "审查权限控制",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取权限配置文件\",\"targetFiles\":[\"permissions.json\",\"rbac.json\",\"acl.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索代码中的权限检查逻辑\",\"targetFiles\":[\"**/*.",
+    "latencyMs": 3534,
+    "tokensPrompt": 62,
+    "tokensCompletion": 289,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_17",
+    "input": "检查日志输出",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取日志配置文件\",\"targetFiles\":[\"log4j.properties\",\"logback.xml\",\"logging.properties\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索日志输出语句\",\"targetFiles\"",
+    "latencyMs": 3218,
+    "tokensPrompt": 62,
+    "tokensCompletion": 261,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_18",
+    "input": "审查异常处理",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目中的主要代码文件，识别异常处理相关代码\",\"targetFiles\":[\"src/**/*.js\",\"src/**/*.ts\",\"app.js\",\"index.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索try-catch块的使",
+    "latencyMs": 3800,
+    "tokensPrompt": 62,
+    "tokensCompletion": 339,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_19",
+    "input": "分析模块耦合",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取模块入口文件\",\"targetFiles\":[\"index.js\",\"main.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索模块导入语句\",\"targetFiles\":[\"*.js\",\"*.ts\"],\"pattern\":\"impor",
+    "latencyMs": 2646,
+    "tokensPrompt": 62,
+    "tokensCompletion": 222,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_20",
+    "input": "审查API设计",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取API设计文档或接口定义文件\",\"targetFiles\":[\"api.yaml\",\"openapi.json\",\"swagger.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索API端点路径和HTTP方法\",\"targetFil",
+    "latencyMs": 2783,
+    "tokensPrompt": 62,
+    "tokensCompletion": 250,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_21",
+    "input": "检查并发安全",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取源代码文件\",\"targetFiles\":[\"main.go\",\"server.go\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索共享变量和资源\",\"targetFiles\":[\"main.go\",\"server.go\"],\"keywor",
+    "latencyMs": 2853,
+    "tokensPrompt": 62,
+    "tokensCompletion": 225,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_22",
+    "input": "审查内存使用",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取进程内存使用配置文件或监控脚本\",\"targetFiles\":[\"memory_config.json\",\"memory_monitor.sh\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索内存泄漏相关代码模式\",\"targetFiles\"",
+    "latencyMs": 2913,
+    "tokensPrompt": 62,
+    "tokensCompletion": 218,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_23",
+    "input": "分析启动流程",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取入口文件\",\"targetFiles\":[\"index.js\",\"app.js\",\"main.js\"]},{\"o",
+    "latencyMs": 2444,
+    "tokensPrompt": 62,
+    "tokensCompletion": 234,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_24",
+    "input": "审查插件系统",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取插件系统主配置文件\",\"targetFiles\":[\"plugin.config.json\",\"plugins.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索插件加载逻辑代码\",\"targetFiles\":[\"plugin-loa",
+    "latencyMs": 2263,
+    "tokensPrompt": 62,
+    "tokensCompletion": 182,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_25",
+    "input": "检查国际化支持",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目中的国际化配置文件\",\"targetFiles\":[\"i18n.config.js\",\"locales/index.js\",\"src/i18n.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索项目中使用的国际化库\",\"targetF",
+    "latencyMs": 3242,
+    "tokensPrompt": 62,
+    "tokensCompletion": 293,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_26",
+    "input": "审查缓存策略",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取缓存配置文件\",\"targetFiles\":[\"cache.config.js\",\"cache.config.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索缓存策略相关代码\",\"targetFiles\":[\"**/*.js\",\"*",
+    "latencyMs": 2898,
+    "tokensPrompt": 62,
+    "tokensCompletion": 267,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_27",
+    "input": "分析数据库查询",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取数据库查询语句或相关配置文件\",\"targetFiles\":[\"query.sql\",\"database.yml\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索查询中涉及的表名和字段定义\",\"targetFiles\":[\"schema.sq",
+    "latencyMs": 2638,
+    "tokensPrompt": 62,
+    "tokensCompletion": 187,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_28",
+    "input": "审查认证逻辑",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取认证相关配置文件\",\"targetFiles\":[\"auth.config.js\",\"auth.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索认证中间件实现\",\"targetFiles\":[\"middleware/auth.js\"",
+    "latencyMs": 2466,
+    "tokensPrompt": 62,
+    "tokensCompletion": 191,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_29",
+    "input": "检查XSS防护",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取前端页面模板文件\",\"targetFiles\":[\"templates/index.html\",\"views/home.ejs\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索输出变量是否使用转义函数\",\"targetFiles\":[\"tem",
+    "latencyMs": 3757,
+    "tokensPrompt": 63,
+    "tokensCompletion": 282,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_30",
+    "input": "分析构建配置",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取构建配置文件\",\"targetFiles\":[\"webpack.config.js\",\"vite.config.ts\",\"rollup.config.js\",\"tsconfig.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索构建脚",
+    "latencyMs": 3445,
+    "tokensPrompt": 62,
+    "tokensCompletion": 278,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_31",
+    "input": "修复 router.ts 的类型错误",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取router.ts文件\",\"targetFiles\":[\"router.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索类型定义文件\",\"targetFiles\":[\"router.ts\"],\"searchPattern\":\"type|",
+    "latencyMs": 2125,
+    "tokensPrompt": 65,
+    "tokensCompletion": 150,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_32",
+    "input": "给 loop.ts 加错误处理",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取loop.ts文件\",\"targetFiles\":[\"loop.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索现有错误处理代码\",\"targetFiles\":[\"loop.ts\"]},{\"order\":3,\"action\":\"read",
+    "latencyMs": 1435,
+    "tokensPrompt": 66,
+    "tokensCompletion": 100,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_33",
+    "input": "实现一个缓存层",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索现有缓存库或中间件\",\"targetFiles\":[\"package.json\",\"node_modules",
+    "latencyMs": 2620,
+    "tokensPrompt": 63,
+    "tokensCompletion": 178,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_34",
+    "input": "重构 executor.ts",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取executor.ts文件\",\"targetFiles\":[\"executor.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索executor.ts中所有函数定义和类定义\",\"targetFiles\":[\"executor.ts\"]}",
+    "latencyMs": 2323,
+    "tokensPrompt": 62,
+    "tokensCompletion": 205,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_35",
+    "input": "写一个工具函数",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目目录结构\",\"targetFiles\":[\".\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取package.json获取项目配置\",\"targetFiles\":[\"package.json\"]},{\"order\":3,\"action\":\"",
+    "latencyMs": 2308,
+    "tokensPrompt": 63,
+    "tokensCompletion": 181,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_36",
+    "input": "修复 executors.ts 的内存泄漏",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取executors.ts文件\",\"targetFiles\":[\"executors.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索内存泄漏相关模式，如闭包、未清理的定时器、事件监听器\",\"targetFiles\":[\"executor",
+    "latencyMs": 3347,
+    "tokensPrompt": 66,
+    "tokensCompletion": 256,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_37",
+    "input": "优化搜索性能",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前搜索相关代码文件\",\"targetFiles\":[\"search.js\",\"searchService.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索项目中使用的搜索算法和数据结构\",\"targetFiles\":[\"search.",
+    "latencyMs": 2823,
+    "tokensPrompt": 62,
+    "tokensCompletion": 203,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_38",
+    "input": "添加日志记录",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取项目入口文件\",\"targetFiles\":[\"index.js\",\"app.js\",\"main.js\"]},{",
+    "latencyMs": 3084,
+    "tokensPrompt": 62,
+    "tokensCompletion": 237,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_39",
+    "input": "修复 autofix-loop.ts 的回滚bug",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取autofix-loop.ts文件\",\"targetFiles\":[\"autofix-loop.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索回滚相关代码\",\"targetFiles\":[\"autofix-loop.ts\"],\"sea",
+    "latencyMs": 2196,
+    "tokensPrompt": 69,
+    "tokensCompletion": 193,
+    "passed": false,
+    "checks": [
+      "invalid_json",
+      "no_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_40",
+    "input": "实现多线程支持",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前项目配置文件以了解现有构建和依赖管理\",\"targetFiles\":[\"package.json\",\"tsconfig.json\",\"pom.xml\",\"build.gradle\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索项目中现有",
+    "latencyMs": 4502,
+    "tokensPrompt": 63,
+    "tokensCompletion": 364,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_41",
+    "input": "给 web-search.ts 加重试",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取web-search.ts文件\",\"targetFiles\":[\"web-search.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索当前重试逻辑或错误处理代码\",\"targetFiles\":[\"web-search.ts\"]},{\"",
+    "latencyMs": 2816,
+    "tokensPrompt": 66,
+    "tokensCompletion": 202,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_42",
+    "input": "修复 deepseek.ts 的超时处理",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前 deepseek.ts 文件\",\"targetFiles\":[\"deepseek.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索超时相关代码\",\"targetFiles\":[\"deepseek.ts\"],\"searchPatte",
+    "latencyMs": 2826,
+    "tokensPrompt": 67,
+    "tokensCompletion": 225,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_43",
+    "input": "优化 prompt 构建速度",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前prompt构建相关代码文件\",\"targetFiles\":[\"promptBuilder.js\",\"promptConfig.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索prompt构建中的性能瓶颈\",\"targetFiles",
+    "latencyMs": 3583,
+    "tokensPrompt": 64,
+    "tokensCompletion": 272,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_44",
+    "input": "添加单元测试",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取项目源代码目录结构\",\"targetFiles\":[\"src/\"]},{\"order\":3,\"action\":\"",
+    "latencyMs": 2337,
+    "tokensPrompt": 62,
+    "tokensCompletion": 177,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_45",
+    "input": "修复类型定义不一致",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取类型定义文件\",\"targetFiles\":[\"types/index.d.ts\",\"types/models.d.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索不一致的类型定义\",\"targetFiles\":[\"src/**/*.t",
+    "latencyMs": 3005,
+    "tokensPrompt": 63,
+    "tokensCompletion": 225,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_46",
+    "input": "实现文件监听功能",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件\",\"targetFiles\":[\"package.json\",\"tsconfig.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找文件监听相关依赖\",\"targetFiles\":[\"package.json\"],\"ke",
+    "latencyMs": 2854,
+    "tokensPrompt": 63,
+    "tokensCompletion": 234,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_47",
+    "input": "优化KV Cache命中率",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前KV Cache配置参数\",\"targetFiles\":[\"config.json\",\"cache_config.yaml\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索代码中KV Cache的访问模式\",\"targetFiles\":[",
+    "latencyMs": 3111,
+    "tokensPrompt": 64,
+    "tokensCompletion": 220,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_48",
+    "input": "修复并发问题",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前代码文件以识别并发问题\",\"targetFiles\":[\"main.go\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索共享变量和锁的使用情况\",\"targetFiles\":[\"main.go\"]},{\"order\":3,\"action",
+    "latencyMs": 2820,
+    "tokensPrompt": 62,
+    "tokensCompletion": 162,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_49",
+    "input": "添加请求限流",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索现有中间件或限流相关代码\",\"targetFiles\":[\"src/\"]},{\"order\":3,\"acti",
+    "latencyMs": 2333,
+    "tokensPrompt": 63,
+    "tokensCompletion": 168,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_50",
+    "input": "实现优雅关闭",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前项目配置文件\",\"targetFiles\":[\"package.json\",\"go.mod\",\"pom.xml\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索现有优雅关闭实现\",\"targetFiles\":[\"main.go\",\"app",
+    "latencyMs": 3224,
+    "tokensPrompt": 62,
+    "tokensCompletion": 249,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_51",
+    "input": "解释项目架构",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目根目录的package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取项目根目录的README.md\",\"targetFiles\":[\"README.md\"]},{\"or",
+    "latencyMs": 3133,
+    "tokensPrompt": 62,
+    "tokensCompletion": 264,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_52",
+    "input": "分析 Router 的工作原理",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取路由配置文件\",\"targetFiles\":[\"router/index.js\",\"router/index.ts\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索路由定义和路由表结构\",\"targetFiles\":[\"router/inde",
+    "latencyMs": 2595,
+    "tokensPrompt": 63,
+    "tokensCompletion": 184,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_53",
+    "input": "解释 Agent Loop 的执行流程",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取用户输入的任务需求\",\"targetFiles\":[\"user_input.txt\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取当前系统状态或上下文信息\",\"targetFiles\":[\"context.json\"]},{\"order\":3,",
+    "latencyMs": 3081,
+    "tokensPrompt": 65,
+    "tokensCompletion": 201,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_54",
+    "input": "分析 KV Cache 策略",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取KV Cache配置文件或相关代码\",\"targetFiles\":[\"config.json\",\"cache_config.yaml\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索KV Cache策略的实现逻辑\",\"targetFiles\"",
+    "latencyMs": 2798,
+    "tokensPrompt": 64,
+    "tokensCompletion": 198,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_55",
+    "input": "解释权限系统设计",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取权限系统设计文档或相关代码文件\",\"targetFiles\":[\"permission_design.md\",\"auth_system.py\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索权限模型定义，如RBAC、ABAC等\",\"targe",
+    "latencyMs": 2683,
+    "tokensPrompt": 63,
+    "tokensCompletion": 199,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_56",
+    "input": "分析工具注册机制",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取工具注册相关配置文件\",\"targetFiles\":[\"tool-registry.json\",\"tools.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索工具注册接口定义\",\"targetFiles\":[\"*.js\",\"*.ts",
+    "latencyMs": 2152,
+    "tokensPrompt": 63,
+    "tokensCompletion": 142,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_57",
+    "input": "解释 prompt 构建逻辑",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取用户原始需求文本\",\"targetFiles\":[\"用户输入\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索prompt构建相关方法论和最佳实践\",\"targetFiles\":[\"知识库\",\"文档\"]},{\"order\":3,\"action",
+    "latencyMs": 3219,
+    "tokensPrompt": 64,
+    "tokensCompletion": 253,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_58",
+    "input": "分析安全防护层",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取安全配置文件\",\"targetFiles\":[\"security.yaml\",\"security.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索安全防护层相关代码\",\"targetFiles\":[\"*.py\",\"*.js\",\"*.",
+    "latencyMs": 2344,
+    "tokensPrompt": 63,
+    "tokensCompletion": 185,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_59",
+    "input": "解释会话管理",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取会话管理相关文档或配置文件\",\"targetFiles\":[\"session-config.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索会话管理的基本概念和定义\",\"targetFiles\":[\"session-manageme",
+    "latencyMs": 2736,
+    "tokensPrompt": 62,
+    "tokensCompletion": 179,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_60",
+    "input": "分析评测体系",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取评测体系相关文档或配置文件\",\"targetFiles\":[\"evaluation_system.md\",\"config.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索评测指标定义\",\"targetFiles\":[\"metrics",
+    "latencyMs": 2428,
+    "tokensPrompt": 62,
+    "tokensCompletion": 175,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_61",
+    "input": "解释错误处理策略",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取错误处理策略相关文档或代码\",\"targetFiles\":[\"error-handling.md\",\"error-handling.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索错误处理策略的关键概念\",\"targetFiles\":[",
+    "latencyMs": 1714,
+    "tokensPrompt": 63,
+    "tokensCompletion": 126,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_62",
+    "input": "分析模型路由逻辑",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取路由配置文件\",\"targetFiles\":[\"routes.js\",\"router.js\",\"index.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索路由定义模式\",\"targetFiles\":[\"routes.js\",\"rout",
+    "latencyMs": 2520,
+    "tokensPrompt": 63,
+    "tokensCompletion": 190,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_63",
+    "input": "解释状态机设计",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取状态机设计文档或相关代码文件\",\"targetFiles\":[\"state_machine_design.md\",\"state_machine.py\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索状态机的基本概念和核心要素（状态、事件、转换",
+    "latencyMs": 2909,
+    "tokensPrompt": 63,
+    "tokensCompletion": 225,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_64",
+    "input": "分析 Pipeline 编排",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取Pipeline配置文件\",\"targetFiles\":[\"pipeline.yaml\",\"pipeline.yml\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取各阶段定义文件\",\"targetFiles\":[\"stages/*.yaml\",",
+    "latencyMs": 2592,
+    "tokensPrompt": 63,
+    "tokensCompletion": 200,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_65",
+    "input": "解释 CLI 命令系统",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取CLI命令系统的核心文档或配置文件\",\"targetFiles\":[\"cli_docs.md\",\"cli_config.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索CLI命令系统的架构说明，包括命令注册、解析和执行流程\",\"ta",
+    "latencyMs": 3524,
+    "tokensPrompt": 64,
+    "tokensCompletion": 224,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_66",
+    "input": "分析上下文缓存",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件\",\"targetFiles\":[\"package.json\",\"tsconfig.json\",\"next.config.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索上下文缓存相关代码\",\"targetFiles\":[\"",
+    "latencyMs": 3323,
+    "tokensPrompt": 62,
+    "tokensCompletion": 207,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_67",
+    "input": "解释搜索降级策略",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取搜索降级策略相关文档或配置文件\",\"targetFiles\":[\"search-config.json\",\"degradation-policy.md\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索降级策略的定义和触发条件\",\"target",
+    "latencyMs": 2433,
+    "tokensPrompt": 64,
+    "tokensCompletion": 200,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_68",
+    "input": "分析 URL 安全校验",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取URL字符串\",\"targetFiles\":[\"url_input.txt\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索URL中的协议头\",\"targetFiles\":[\"url_input.txt\"]},{\"order\":3,\"acti",
+    "latencyMs": 2377,
+    "tokensPrompt": 64,
+    "tokensCompletion": 183,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_69",
+    "input": "解释重试逻辑",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取重试逻辑相关代码或配置文件\",\"targetFiles\":[\"retry.js\",\"retry.ts\",\"retry.py\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索重试逻辑的关键实现，如重试次数、间隔、条件\",\"targetFiles",
+    "latencyMs": 1893,
+    "tokensPrompt": 63,
+    "tokensCompletion": 154,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_70",
+    "input": "分析熔断机制",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取熔断机制相关配置文件\",\"targetFiles\":[\"circuit-breaker-config.json\",\"application.yml\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索熔断机制核心代码实现\",\"targetFile",
+    "latencyMs": 3269,
+    "tokensPrompt": 63,
+    "tokensCompletion": 249,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_71",
+    "input": "跑一个hello脚本",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取hello脚本文件\",\"targetFiles\":[\"hello\"]},{\"order\":2,\"action\":\"verify\",\"description\":\"检查脚本是否有执行权限\",\"targetFiles\":[\"hello\"]},{\"order\":3,\"action\":\"search\"",
+    "latencyMs": 2499,
+    "tokensPrompt": 63,
+    "tokensCompletion": 181,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_72",
+    "input": "运行 typecheck",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取 package.json 检查 typecheck 脚本\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找 tsconfig.json 配置文件\",\"targetFiles\":[\"",
+    "latencyMs": 2167,
+    "tokensPrompt": 62,
+    "tokensCompletion": 171,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_73",
+    "input": "执行 pnpm test",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json确认test脚本\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找pnpm-lock.yaml确认依赖已安装\",\"targetFiles\":[\"pnpm-lo",
+    "latencyMs": 1875,
+    "tokensPrompt": 63,
+    "tokensCompletion": 148,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_74",
+    "input": "跑一下构建",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json获取构建脚本\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取构建配置文件\",\"targetFiles\":[\"webpack.config.js\",\"vite.c",
+    "latencyMs": 2208,
+    "tokensPrompt": 62,
+    "tokensCompletion": 161,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_75",
+    "input": "运行 lint 检查",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件\",\"targetFiles\":[\"package.json\",\".eslintrc.js\",\".eslintrc.json\",\".eslintrc.yaml\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找 lint 相关脚本命",
+    "latencyMs": 2579,
+    "tokensPrompt": 63,
+    "tokensCompletion": 215,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_76",
+    "input": "执行数据库迁移",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取数据库迁移配置文件\",\"targetFiles\":[\"migration-config.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取迁移脚本目录\",\"targetFiles\":[\"migrations/\"]},{\"order\":3,",
+    "latencyMs": 2114,
+    "tokensPrompt": 62,
+    "tokensCompletion": 181,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_77",
+    "input": "跑一下性能测试",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找性能测试相关依赖或脚本\",\"targetFiles\":[\"package.json\"]},{\"order\":",
+    "latencyMs": 2230,
+    "tokensPrompt": 63,
+    "tokensCompletion": 178,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_78",
+    "input": "运行单元测试",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json确认测试脚本配置\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找测试框架配置文件（如jest.config.js、.babelrc等）\",\"targetFi",
+    "latencyMs": 2885,
+    "tokensPrompt": 62,
+    "tokensCompletion": 224,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_79",
+    "input": "执行部署脚本",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取部署脚本文件\",\"targetFiles\":[\"deploy.sh\",\"deploy.bat\",\"deploy.yml\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取项目配置文件\",\"targetFiles\":[\"package.json\",\"",
+    "latencyMs": 3282,
+    "tokensPrompt": 62,
+    "tokensCompletion": 282,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_80",
+    "input": "跑一下集成测试",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取集成测试配置文件\",\"targetFiles\":[\"jest.config.js\",\"jest.integration.config.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找集成测试文件\",\"targetFiles\":[\"**/",
+    "latencyMs": 3324,
+    "tokensPrompt": 63,
+    "tokensCompletion": 248,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_81",
+    "input": "运行代码格式化",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件以确定格式化工具\",\"targetFiles\":[\"package.json\",\".prettierrc\",\".eslintrc.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找项目中已安装的格式化工具\",\"targetFi",
+    "latencyMs": 2604,
+    "tokensPrompt": 62,
+    "tokensCompletion": 211,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_82",
+    "input": "执行清理脚本",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取清理脚本文件\",\"targetFiles\":[\"clean.sh\",\"cleanup.sh\",\"clear.sh\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找清理脚本中的清理命令\",\"targetFiles\":[\"clean.sh\",\"c",
+    "latencyMs": 2420,
+    "tokensPrompt": 62,
+    "tokensCompletion": 190,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_83",
+    "input": "跑一下安全扫描",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取依赖锁定文件\",\"targetFiles\":[\"package-lock.json\",\"yarn.lock\",\"",
+    "latencyMs": 2368,
+    "tokensPrompt": 63,
+    "tokensCompletion": 173,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_84",
+    "input": "运行 e2e 测试",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取 package.json 查看测试脚本配置\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找 e2e 测试配置文件\",\"targetFiles\":[\"cypress.config.",
+    "latencyMs": 3376,
+    "tokensPrompt": 65,
+    "tokensCompletion": 287,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_85",
+    "input": "执行备份",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取备份配置文件\",\"targetFiles\":[\"backup-config.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找需要备份的文件列表\",\"targetFiles\":[\"backup-list.txt\"]},{\"order\"",
+    "latencyMs": 2079,
+    "tokensPrompt": 61,
+    "tokensCompletion": 132,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_86",
+    "input": "Review the current project code",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目根目录的package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取项目根目录的tsconfig.json\",\"targetFiles\":[\"tsconfig.json",
+    "latencyMs": 2618,
+    "tokensPrompt": 63,
+    "tokensCompletion": 246,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_87",
+    "input": "Fix the type error",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取tsconfig.json\",\"targetFiles\":[\"tsconfig.json\"]},{\"order\"",
+    "latencyMs": 1797,
+    "tokensPrompt": 62,
+    "tokensCompletion": 162,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_88",
+    "input": "Explain the architecture",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目根目录下的架构说明文件\",\"targetFiles\":[\"ARCHITECTURE.md\",\"docs/architecture.md\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索项目中的主要模块和组件目录结构\",\"targetFil",
+    "latencyMs": 3878,
+    "tokensPrompt": 61,
+    "tokensCompletion": 252,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_89",
+    "input": "Run the test suite",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json获取测试脚本配置\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找测试框架配置文件\",\"targetFiles\":[\"jest.config.js\",\"vit",
+    "latencyMs": 2650,
+    "tokensPrompt": 62,
+    "tokensCompletion": 209,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_90",
+    "input": "Check for security issues",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json检查依赖版本\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索代码中的eval函数使用\",\"targetFiles\":[\"**/*.js\",\"**/*.ts\"",
+    "latencyMs": 2286,
+    "tokensPrompt": 62,
+    "tokensCompletion": 165,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_91",
+    "input": "Add error handling",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取主入口文件\",\"targetFiles\":[\"index.js\",\"app.js\",\"server.js\"]},",
+    "latencyMs": 2694,
+    "tokensPrompt": 61,
+    "tokensCompletion": 202,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_92",
+    "input": "Implement caching",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前缓存配置文件\",\"targetFiles\":[\"cache.config.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索项目中现有的缓存实现\",\"targetFiles\":[\"src/**/*.js\",\"src/**/*.ts",
+    "latencyMs": 2679,
+    "tokensPrompt": 60,
+    "tokensCompletion": 173,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_93",
+    "input": "Optimize performance",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取webpack或vite配置文件\",\"targetFiles\":[\"webpack.config.js\",\"vi",
+    "latencyMs": 2946,
+    "tokensPrompt": 61,
+    "tokensCompletion": 219,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_94",
+    "input": "Generate unit tests",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件以了解测试框架\",\"targetFiles\":[\"package.json\",\"jest.config.js\",\"tsconfig.json\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索现有测试文件了解测试模式\",\"targe",
+    "latencyMs": 2967,
+    "tokensPrompt": 61,
+    "tokensCompletion": 236,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_95",
+    "input": "Refactor the router",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取当前路由配置文件\",\"targetFiles\":[\"src/router/index.js\",\"src/router/routes.js\"]},{\"order\":2,\"action\":\"search\",\"description\":\"搜索所有组件中使用的路由引用\",\"targetFiles\":",
+    "latencyMs": 3341,
+    "tokensPrompt": 62,
+    "tokensCompletion": 246,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_96",
+    "input": "Analyze dependencies",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取package.json文件\",\"targetFiles\":[\"package.json\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取package-lock.json或yarn.lock文件\",\"targetFiles\":[\"package",
+    "latencyMs": 3147,
+    "tokensPrompt": 60,
+    "tokensCompletion": 284,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_97",
+    "input": "Build the project",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件\",\"targetFiles\":[\"package.json\",\"build.gradle\",\"pom.xml\",\"Makefile\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找构建脚本或入口文件\",\"targetFiles\"",
+    "latencyMs": 3341,
+    "tokensPrompt": 61,
+    "tokensCompletion": 242,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_98",
+    "input": "Run linting",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取项目配置文件\",\"targetFiles\":[\"package.json\",\".eslintrc.js\",\".eslintrc.json\",\".eslintrc.yaml\"]},{\"order\":2,\"action\":\"search\",\"description\":\"查找lint相关脚本\",\"",
+    "latencyMs": 2671,
+    "tokensPrompt": 61,
+    "tokensCompletion": 216,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  },
+  {
+    "id": "plan_99",
+    "input": "Deploy the application",
+    "output": "{\"steps\":[{\"order\":1,\"action\":\"read\",\"description\":\"读取部署配置文件\",\"targetFiles\":[\"deploy.yaml\",\"docker-compose.yml\",\"Dockerfile\"]},{\"order\":2,\"action\":\"read\",\"description\":\"读取应用代码和依赖配置\",\"targetFiles\":[\"pa",
+    "latencyMs": 2837,
+    "tokensPrompt": 62,
+    "tokensCompletion": 210,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "has_steps",
+      "no_hallucination",
+      "descriptive_steps"
+    ]
+  }
+]

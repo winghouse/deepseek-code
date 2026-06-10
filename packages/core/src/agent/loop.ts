@@ -205,10 +205,9 @@ export async function runAgentLoop(
     console.log(`✅ (${Date.now() - scanStart}ms) → ${repoInfo.techStack.language}${repoInfo.techStack.framework ? ' + ' + repoInfo.techStack.framework : ''}`);
     console.log('');
 
-    // 5. 生成计划（支持流式输出）
+    // 5. 生成计划（流式输出）
     const planStart = Date.now();
     process.stdout.write('📋 生成计划... ');
-    // 计划用 Flash（快），执行用 Pro（强）
     const planResult = await generatePlanWithStreaming(router.flash, repoInfo, taskDescription, repoSummary, streaming, readOnly ? 'readonly' : 'ask');
     const plan = planResult.plan;
     const planMs = Date.now() - planStart;
@@ -318,14 +317,13 @@ export async function continueLoop(
 
       // DeepSeek V4: 审查/审计任务提升推理深度
       const isAudit = /审查|审计|检查.*优化|代码质量|安全.*漏洞|架构.*问题/i.test(session.taskDescription);
-      // 第一轮强制工具调用（修复/定位类任务必须读文件，不准猜）
-      const forceFirstTool = stepIndex === 1 && /修复|定位|排查|debug|报错|错误/i.test(session.taskDescription);
       const response = await withSpinner(
         model.chat(messages, {
           tools: availableTools,
           temperature: 0.3,
-          reasoningEffort: isAudit ? 'high' : undefined,
-          toolChoice: forceFirstTool ? 'required' : 'auto',
+          // high 会严重挤压输出 token 空间 → 只用 medium
+          reasoningEffort: isAudit ? 'medium' : undefined,
+          toolChoice: 'auto',
         }),
         '模型思考中',
       );
@@ -340,18 +338,68 @@ export async function continueLoop(
 
       if (response.finish_reason === 'stop' && !response.tool_calls) {
         const finalContent = response.content ?? '';
+        // 空响应兜底：Pro thinking 可能吞掉全部输出 → 追加提示让模型重试
+        if (!finalContent.trim()) {
+          messages.push({ role: 'user', content: '你的上一条回复是空的。请基于已读取的文件输出分析结论，至少3句话。如果信息不足，说明还需要读哪些文件。' });
+          continue; // 再给模型一次机会
+        }
         session.steps.push(createStep(stepIndex, 'final', finalContent));
         messages.push({ role: 'assistant', content: finalContent });
-        console.log(`\n✅ 分析完成 (总耗时 ${((Date.now() - startTime) / 1000).toFixed(1)}s)：\n`);
-        if (streaming) {
-          for (const char of finalContent) {
-            process.stdout.write(char);
-            if (char === '\n') await sleep(5);
+
+        // 两阶段输出：足够多的工具调用后，先给摘要再给详情
+        // Phase 1 快速拿到核心发现 → Phase 2 前缀命中 KV Cache 流式展开
+        const canTwoPhase = streaming && stepIndex >= 3 && messages.length > 6;
+
+        if (canTwoPhase) {
+          console.log(`\n⚡ 两阶段输出 (前缀复用 KV Cache)：\n`);
+
+          // Phase 1: 核心摘要（轻量级，快速返回）
+          process.stdout.write('🔑 ');
+          const phase1Start = Date.now();
+          messages.push({ role: 'user', content: '基于以上全部分析，先输出1-2句最关键的发现或结论，不超过80字。只输出结论本身，不要说"基于分析"之类的废话。' });
+          let phase1Summary = '';
+          try {
+            for await (const chunk of model.chatStream(messages, { temperature: 0.3, maxTokens: 300, disableThinking: true })) {
+              process.stdout.write(chunk);
+              phase1Summary += chunk;
+            }
+            process.stdout.write('\n\n');
+          } catch {
+            process.stdout.write(finalContent.slice(0, 300) + '\n\n');
+            phase1Summary = '';
           }
-          process.stdout.write('\n');
+          if (!phase1Summary.trim()) phase1Summary = finalContent.slice(0, 300);
+          messages.push({ role: 'assistant', content: phase1Summary });
+          const phase1Ms = Date.now() - phase1Start;
+
+          // Phase 2: 详细报告（前缀稳定 → KV Cache 命中）
+          process.stdout.write('📋 详细分析:\n');
+          const phase2Start = Date.now();
+          messages.push({ role: 'user', content: '输出分析报告。格式要求：每个发现一行，格式为 "文件:行号 — 问题 — 证据 — 建议"。代码证据必须是真实片段。没有足够证据的发现不要输出。如果确实没有可验证的发现，直接说"未发现可验证的问题"。' });
+          let phase2Text = '';
+          try {
+            for await (const chunk of model.chatStream(messages, { temperature: 0.3, maxTokens: 2048, disableThinking: true })) {
+              process.stdout.write(chunk);
+              phase2Text += chunk;
+            }
+            process.stdout.write('\n');
+          } catch {
+            process.stdout.write(finalContent + '\n');
+            phase2Text = finalContent;
+          }
+          // Phase2 空内容兜底：用原始 finalContent
+          if (!phase2Text.trim()) {
+            console.log('⚠️ Phase2 无输出，回退到原始回答：');
+            process.stdout.write(finalContent + '\n');
+          }
+          const phase2Ms = Date.now() - phase2Start;
+          console.log(`\n⏱ Phase1: ${(phase1Ms / 1000).toFixed(1)}s | Phase2: ${(phase2Ms / 1000).toFixed(1)}s (KV Cache 复用前缀)`);
         } else {
-          console.log(finalContent);
+          // 常规输出：内容少时不拆两阶段
+          console.log(`\n✅ 分析完成 (总耗时 ${((Date.now() - startTime) / 1000).toFixed(1)}s)：\n`);
+          process.stdout.write(finalContent + '\n');
         }
+
         taskComplete = true;
         break;
       }
@@ -372,11 +420,6 @@ export async function continueLoop(
           for (let i = toolCallsToExecute.length - 1; i >= 0; i--) {
             const tc = toolCallsToExecute[i];
             const isWrite = writeTools.has(tc.function.name);
-            if (isWrite && readOnly) {
-              toolCallsToExecute.splice(i, 1);
-              deniedResults.push({ tc, result: { success: false, content: '只读模式下不允许写操作', error: 'readonly' } });
-              continue;
-            }
             if (isWrite) {
               const risk = tc.function.name === 'run_command' ? 'needs_confirm' as const : 'dangerous' as const;
               const decision = await permissionManager.requestPermission({
@@ -435,23 +478,33 @@ export async function continueLoop(
         step.toolResults = toolResults;
         session.steps.push(step);
 
-        // No-progress: 当前轮读取文件 vs 上轮
+        // No-progress 检测：仅当连续多轮"只读同样的文件"时才触发
+        // 如果 Agent 换了策略（执行命令、搜索新关键词、列出新目录），说明在积极探索，不算停滞
         const currentFiles = new Set<string>(
           toolCallsToExecute.filter((tc) => tc.function.name === 'read_file')
             .map((tc) => { try { return (JSON.parse(tc.function.arguments) as { filePath: string }).filePath; } catch { return ''; } })
             .filter(Boolean),
         );
-        const hasNew = [...currentFiles].some((f) => !lastReadFiles.has(f));
-        if (!hasNew && toolCallsToExecute.length > 0) {
+        const hasNewFile = [...currentFiles].some((f) => !lastReadFiles.has(f));
+        const hasOtherTools = toolCallsToExecute.some((tc) =>
+          !['read_file', 'read_file_range', 'read_file_batch'].includes(tc.function.name)
+        );
+        // 只读文件无新增 + 没有尝试其他工具 → 可能是停滞
+        if (!hasNewFile && !hasOtherTools && toolCallsToExecute.length > 0) {
           noProgressRounds++;
-          if (noProgressRounds >= 3) {
-            console.log('⚠️ 连续 3 轮无新增文件，停止探索');
+          if (noProgressRounds >= 5) {
+            console.log('⚠️ 连续 5 轮仅读同样文件，停止探索');
+            const readSoFar = [...lastReadFiles].slice(0, 20).join(', ');
+            const fallback = `已读取 ${lastReadFiles.size} 个文件，但模型未能给出最终分析。\n已读取的文件: ${readSoFar}${lastReadFiles.size > 20 ? ' ...' : ''}\n\n建议: 尝试用更具体的任务描述重试，或指定具体文件。`;
+            session.steps.push(createStep(stepIndex, 'final', fallback));
+            messages.push({ role: 'assistant', content: fallback });
+            console.log(`\n📋 兜底输出:\n${fallback}`);
             taskComplete = true;
             session.stopReason = 'no_progress';
             break;
           }
-        } else if (hasNew) {
-          noProgressRounds = 0;
+        } else {
+          noProgressRounds = 0;  // 有新文件或换了策略 → 重置
         }
         for (const f of currentFiles) lastReadFiles.add(f);
 
@@ -515,10 +568,18 @@ async function generatePlanWithStreaming(
       let shownSteps = 0;
       const gen = model.chatStream(
         [
-          { role: 'system', content: `你是 DeepSeek Code Agent。根据项目信息生成 JSON 执行计划。只输出 JSON。` },
+          { role: 'system', content: `你是 DeepSeek Code Agent。生成 JSON 执行计划。
+
+输出格式（严格）:
+{"steps":[{"order":1,"action":"read","description":"读取根package.json了解项目配置","targetFiles":["package.json"]},{"order":2,"action":"search","description":"搜索安全问题","targetFiles":["packages/"]}]}
+
+可用 action: read(读文件) / search(搜索/列目录) / verify(验证发现)
+可用工具名: read_file, read_file_batch, search_code, list_files, glob, git_status, git_diff, read_package_json, find_references
+
+铁律: ①只输出上述JSON格式 ②禁止输出分析结论 ③targetFiles写真实路径 ④步骤数3-8 ⑤action只用read/search/verify` },
           { role: 'user', content: `项目:\n${repoSummary}\n\n需求: ${taskDescription}\n\nJSON:` },
         ],
-        { temperature: 0.1, maxTokens: 2048 },
+        { temperature: 0.1, maxTokens: 512, disableThinking: true },
       );
 
       const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -581,7 +642,8 @@ async function withSpinner<T>(promise: Promise<T>, label: string): Promise<T> {
     return await promise;
   } finally {
     clearInterval(timer);
-    process.stdout.write('\r' + ' '.repeat(60) + '\n');
+    // 清除 spinner 行，不换行（让后续输出自然接上）
+    process.stdout.write('\r' + ' '.repeat(50) + '\r');
   }
 }
 

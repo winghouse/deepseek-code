@@ -46,6 +46,36 @@ export type { RepairResult, ParsedError, RepairPipelineOptions } from './tools/r
 export { runReviewDiffPipeline } from './tools/review-diff-pipeline.js';
 export type { DiffReviewResult, DiffFinding } from './tools/review-diff-pipeline.js';
 
+// AutoFix Loop
+export { runAutoFixLoop } from './tools/autofix-loop.js';
+export type { AutoFixResult, AutoFixOptions, FixAttempt } from './tools/autofix-loop.js';
+
+// Task Eval
+export { loadTaskFixtures, scoreTaskEval, generateTaskEvalReport, formatTaskEvalReport } from './tools/task-eval.js';
+export type { TaskEvalCase, TaskEvalResult, TaskEvalReport, TaskEvalScore } from './tools/task-eval.js';
+
 // Router Eval
 export { evaluateRouterCase, generateEvalReport, formatEvalReport } from './agent/router-eval.js';
 export type { EvalResult, EvalReport } from './agent/router-eval.js';
+
+// Workflow
+export {
+  WorkflowEngine,
+  validateWorkflow,
+  resolveTemplate,
+  resolveObject,
+  evaluateExpression,
+  saveWorkflowDefinition,
+  loadWorkflowDefinition,
+  listWorkflowDefinitions,
+  deleteWorkflowDefinition,
+  saveWorkflowRun,
+  loadWorkflowRun,
+  listWorkflowRuns,
+  deleteWorkflowRun,
+  BUILTIN_WORKFLOWS,
+  REVIEW_DIFF_WORKFLOW,
+  REPAIR_TYPESCRIPT_WORKFLOW,
+  CODE_REVIEW_BASIC_WORKFLOW,
+} from './workflow/index.js';
+export type { ToolExecutor, PipelineExecutor, ValidationResult } from './workflow/index.js';

@@ -1,6 +1,6 @@
 {
   "name": "deepseek-codecli",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "description": "DeepSeek V4 原生 AI 编程 Agent CLI — 面向中文开发者",
   "type": "module",
   "license": "MIT",

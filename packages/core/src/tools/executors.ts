@@ -344,12 +344,19 @@ export function createToolExecutors(ctx: ToolContext): ToolExecutors {
           reject: false,
         });
 
+        const hasChanges = status.stdout.trim().length > 0;
+        const changedFiles = status.stdout.trim().split('\n').filter(Boolean).length;
         return {
           success: true,
           content: [
             `分支: ${branch.stdout.trim() || '未知'}`,
             `变更:\n${status.stdout || '工作区干净'}`,
           ].join('\n'),
+          metadata: {
+            branch: branch.stdout.trim() || 'unknown',
+            hasUncommittedChanges: hasChanges,
+            changedFiles,
+          },
         };
       } catch {
         return { success: false, content: '不是 Git 仓库或 Git 不可用' };
@@ -369,7 +376,12 @@ export function createToolExecutors(ctx: ToolContext): ToolExecutors {
         });
 
         const content = result.stdout || '无差异';
-        return { success: true, content: truncate(content, 30_000) };
+        const hasChanges = result.stdout.trim().length > 0;
+        return {
+          success: true,
+          content: truncate(content, 30_000),
+          metadata: { hasChanges, length: result.stdout.length },
+        };
       } catch {
         return { success: false, content: '无法获取 git diff' };
       }
@@ -619,10 +631,10 @@ export async function executeTool(
   if (ctx?.mode === 'readonly' && isWrite) {
     const blockedResult: ToolExecutionResult = {
       success: false,
-      content: `🚫 READONLY 模式永久禁止 ${name}。不要重试此工具，不要换命令再试。请仅使用 read_file/search_code/list_files 进行静态分析，在最终报告中说明"建议切换到 --write 模式后可执行命令验证"。`,
+      content: `当前是只读模式，无法执行 ${name}。告诉用户：这个操作需要写权限，输入 /write 切换到读写模式后就可以执行了。不要说你"没有能力"——你有能力，只是需要用户授权。`,
       error: 'READONLY_TOOL_BLOCKED',
       metadata: {
-        message: `readonly 模式下禁止 ${name}。请仅使用只读工具分析代码，并输出修复建议。`,
+        message: `需要写权限。引导用户使用 /write 切换模式。`,
         blocked: true,
         doNotRetry: true,
       },

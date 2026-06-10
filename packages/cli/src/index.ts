@@ -19,6 +19,29 @@ import { getTemplates, generateAgentsMdTemplate } from './templates.js';
 // 在任何命令执行前自动确保配置存在
 ensureConfig();
 
+// ---- 轻量 Spinner（避免 silent gap） ----
+
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+function startSpinner(label: string): ReturnType<typeof setInterval> {
+  let i = 0;
+  const start = Date.now();
+  const timer = setInterval(() => {
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    if (process.stdout.isTTY) {
+      process.stdout.write(`\r  ${SPINNER_FRAMES[i++ % SPINNER_FRAMES.length]} ${label}... (${elapsed}s)`);
+    }
+  }, 150);
+  return timer;
+}
+
+function stopSpinner(timer: ReturnType<typeof setInterval>) {
+  clearInterval(timer);
+  if (process.stdout.isTTY) {
+    process.stdout.write('\r' + ' '.repeat(60) + '\r');
+  }
+}
+
 // ---- CLI 定义 ----
 
 const program = new Command();
@@ -31,8 +54,9 @@ program
   .option('-m, --model <model>', '指定模型: auto, deepseek-v4-pro, deepseek-v4-flash', 'auto')
   .option('--api-key <key>', 'DeepSeek API Key')
   .option('--base-url <url>', 'API Base URL')
-  .option('-r, --read-only', '只读模式（不修改文件，默认开启）', true)
-  .option('--write', '启用写模式（可以修改文件）', false)
+  .option('--plan', '📋 计划模式(只读)', false)
+  .option('--edit', '✏️ 编辑模式(默认)', true)
+  .option('--auto', '🚀 自主模式(全自动)', false)
   .option('--dry-run', '仅生成计划，不执行', false)
   .option('-d, --dir <dir>', '指定项目目录', process.cwd())
   .option('--resume <session-id>', '恢复指定会话')
@@ -43,7 +67,7 @@ program
     const apiKey = (options.apiKey as string) ?? config.apiKey;
     const baseUrl = (options.baseUrl as string) ?? config.baseUrl ?? 'https://api.deepseek.com';
     const modelStrategy = (options.model as string) ?? 'auto';
-    const readOnly = !(options.write as boolean);
+    const runMode: 'plan' | 'edit' | 'auto' = options.plan ? 'plan' : options.auto ? 'auto' : 'edit';
     const workingDir = path.resolve(options.dir as string);
     const dryRun = options.dryRun as boolean;
     const resumeSessionId = (options.resume as string) || undefined;
@@ -59,36 +83,22 @@ program
     }
 
     if (!task && !resumeSessionId) {
-      await interactiveMode(config, apiKey, baseUrl, modelStrategy, workingDir, readOnly);
+      await interactiveMode(config, apiKey, baseUrl, modelStrategy, workingDir, runMode);
       return;
     }
 
     // 意图分流：Hybrid Router
     if (task && !resumeSessionId) {
-      const currentMode = readOnly ? 'readonly' as const : 'ask' as const;
+      const routerMode = runMode === 'plan' ? 'readonly' as const : runMode === 'edit' ? 'ask' as const : 'auto' as const;
       const route = await routeInput(task, {
-        mode: currentMode,
+        mode: routerMode,
         projectName: path.basename(workingDir),
         projectPath: workingDir,
       }, createLLMRouterClient(apiKey, baseUrl));
-      logRoute(route, currentMode);
+      logRoute(route, routerMode);
       // audit_task 走 Agent 审查（audit_pipeline 仅用于 dscode audit 命令）
-      // Execution Dispatcher: debug_task → Repair Pipeline
-      if (route.intent === 'debug_task') {
-        const { runRepairPipeline } = await import('deepseek-code-core');
-        console.log('🔧 Repair Pipeline\n');
-        const proClient = apiKey ? createProClient(apiKey, baseUrl) : undefined;
-        const result = await runRepairPipeline({ workingDir, taskDescription: task, mode: currentMode, proClient, onProgress: (s) => console.log(`  ⏳ ${s}`) });
-        console.log(result.summary);
-        if (result.errorLocation) console.log(`📍 ${result.errorLocation.file ? `${result.errorLocation.file}:${result.errorLocation.line ?? '?'}` : ''} [${result.errorLocation.category}] ${result.errorLocation.message.slice(0, 120)}`);
-        if (result.rootCause) console.log(`\n🔍 根因分析:\n${result.rootCause}`);
-        if (result.suggestedFix) console.log(`💡 ${result.suggestedFix}`);
-        if (result.filesExamined.length > 0) console.log(`📁 检查文件: ${result.filesExamined.join(', ')}`);
-        console.log(`\n⏱ ${(result.elapsedMs / 1000).toFixed(1)}s`);
-        return;
-      }
-      // Execution Dispatcher: diff review
-      if (route.intent === 'command_status' && task?.includes('diff')) {
+      // Execution Dispatcher: diff review（必须在 debug_task 之前）
+      if ((route.intent === 'command_status' || route.intent === 'debug_task') && /diff|git diff|改动|变更|changed/i.test(task)) {
         const { runReviewDiffPipeline } = await import('deepseek-code-core');
         console.log('📋 Review Diff Pipeline\n');
         const result = await runReviewDiffPipeline({ workingDir, onProgress: (s) => console.log(`  ⏳ ${s}`) });
@@ -105,6 +115,20 @@ program
         }
         if (result.findings.length === 0) console.log('  ✅ 未发现明显问题');
         console.log(`\n⏱ ${(result.elapsedMs / 1000).toFixed(1)}s | 0 模型调用`);
+        return;
+      }
+      // Execution Dispatcher: debug_task → Repair Pipeline（非 diff 类）
+      if (route.intent === 'debug_task') {
+        const { runRepairPipeline } = await import('deepseek-code-core');
+        console.log('🔧 Repair Pipeline\n');
+        const proClient = apiKey ? createProClient(apiKey, baseUrl) : undefined;
+        const result = await runRepairPipeline({ workingDir, taskDescription: task, mode: routerMode, proClient, onProgress: (s) => console.log(`  ⏳ ${s}`) });
+        console.log(result.summary);
+        if (result.errorLocation) console.log(`📍 ${result.errorLocation.file ? `${result.errorLocation.file}:${result.errorLocation.line ?? '?'}` : ''} [${result.errorLocation.category}] ${result.errorLocation.message.slice(0, 120)}`);
+        if (result.rootCause) console.log(`\n🔍 根因分析:\n${result.rootCause}`);
+        if (result.suggestedFix) console.log(`💡 ${result.suggestedFix}`);
+        if (result.filesExamined.length > 0) console.log(`📁 检查文件: ${result.filesExamined.join(', ')}`);
+        console.log(`\n⏱ ${(result.elapsedMs / 1000).toFixed(1)}s`);
         return;
       }
       // Execution Dispatcher: url_fetch_pipeline
@@ -126,7 +150,7 @@ program
     }
 
     // 单次任务 / 恢复会话
-    await runTask(task || '恢复会话', config, apiKey, baseUrl, modelStrategy, workingDir, readOnly, dryRun, resumeSessionId);
+    await runTask(task || '恢复会话', config, apiKey, baseUrl, modelStrategy, workingDir, runMode, dryRun, resumeSessionId);
   });
 
 // 交互模式：持续接收命令
@@ -147,7 +171,7 @@ program
       options.baseUrl ?? config.baseUrl ?? 'https://api.deepseek.com',
       options.model,
       process.cwd(),
-      true,
+      'edit' as const,
     );
   });
 
@@ -170,7 +194,7 @@ program
       options.baseUrl ?? config.baseUrl ?? 'https://api.deepseek.com',
       options.model,
       process.cwd(),
-      true,
+      'plan' as const,
       true,
     );
   });
@@ -284,13 +308,145 @@ program
 // Router Eval
 program
   .command('eval <target>')
-  .description('系统评测 (target: router)')
+  .description('系统评测 (target: router | task)')
   .option('--suite <name>', '指定评测套件')
   .option('--format <fmt>', '输出格式: json, markdown', 'markdown')
   .option('--live', '使用真实 LLM Router（默认 mock）')
   .action(async (target: string, options) => {
+    if (target === 'task') {
+      // ═══ dscode eval task ═══
+      const { loadTaskFixtures, scoreTaskEval, generateTaskEvalReport, formatTaskEvalReport, routeInput } = await import('deepseek-code-core');
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+
+      const fixturesDir = path.join(process.cwd(), '.evals', 'fixtures');
+      if (!fs.existsSync(fixturesDir)) {
+        console.log(`❌ Fixture 目录不存在: ${fixturesDir}`);
+        console.log('💡 运行 npx tsx .evals/tasks/generate-fixtures.ts 生成 fixture');
+        return;
+      }
+
+      const suiteFilter = options.suite as string | undefined;
+      const allCases = loadTaskFixtures(fixturesDir);
+      const filtered = suiteFilter
+        ? allCases.filter(c => c.suite === suiteFilter || c.suite.includes(suiteFilter))
+        : allCases;
+
+      console.log('🧪 dscode Task Eval\n');
+      console.log(`📋 加载 ${filtered.length} 条任务 (${allCases.length} 总, ${new Set(allCases.map(c => c.suite)).size} 套件)\n`);
+
+      const isLive = !!options.live;
+      const config = loadConfig();
+      const apiKey = config.apiKey || process.env.DEEPSEEK_API_KEY;
+
+      if (isLive && apiKey) {
+        console.log('🔴 LIVE 模式：实际执行 pipeline\n');
+      } else if (isLive) {
+        console.log('⚠️ --live 需要 DEEPSEEK_API_KEY，降级为路由评测\n');
+      }
+
+      const results: any[] = [];
+      const startTime = Date.now();
+
+      for (const tc of filtered) {
+        const ctx = {
+          mode: tc.mode,
+          projectName: tc.suite,
+          projectPath: tc.casePath,
+        };
+
+        const caseStart = Date.now();
+        let routeResult: any;
+        let toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+        let outputText = '';
+
+        // 1. 路由
+        try {
+          routeResult = await routeInput(tc.task, ctx);
+        } catch {
+          routeResult = { intent: 'unknown', execution: 'local_action', shouldScanProject: false };
+        }
+
+        // 2. --live: 实际执行 pipeline
+        if (isLive && apiKey) {
+          try {
+            const isRepair = tc.suite === 'repair-typescript';
+            const isDiff = tc.suite === 'diff-review';
+            const isReview = tc.suite === 'code-review';
+
+            if (isRepair) {
+              const { runRepairPipeline } = await import('deepseek-code-core');
+              const proClient = {
+                async chat(prompt: string) {
+                  const res = await fetch(`${config.baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+                    body: JSON.stringify({ model: 'deepseek-v4-pro', messages: [{ role: 'user', content: prompt }], max_tokens: 1024, temperature: 0.1 }),
+                    signal: AbortSignal.timeout(30000),
+                  });
+                  const data = await res.json() as any;
+                  return data.choices?.[0]?.message?.content ?? '';
+                },
+              };
+              const repairResult = await runRepairPipeline({
+                workingDir: tc.casePath,
+                taskDescription: tc.task,
+                mode: tc.mode,
+                proClient,
+              });
+              outputText = `${repairResult.summary}\n${repairResult.rootCause ?? ''}\n${repairResult.suggestedFix ?? ''}`;
+              toolCalls = repairResult.filesExamined.map(f => ({ name: 'read_file', args: { filePath: f } }));
+              if (repairResult.patchProposal) toolCalls.push({ name: 'apply_patch', args: { patch: repairResult.patchProposal } });
+            } else if (isDiff) {
+              const { runReviewDiffPipeline } = await import('deepseek-code-core');
+              const diffResult = await runReviewDiffPipeline({
+                workingDir: tc.casePath,
+              });
+              outputText = `${diffResult.summary}\n${diffResult.findings.map(f => `${f.file}: ${f.description}`).join('\n')}`;
+              toolCalls = [{ name: 'git_diff', args: {} }, { name: 'git_status', args: {} }];
+            } else if (isReview) {
+              const { runAuditPipeline } = await import('deepseek-code-core');
+              const auditResult = await runAuditPipeline({
+                workingDir: tc.casePath,
+                mode: 'standard',
+              });
+              outputText = auditResult.findings.map(f => `${f.severity}: ${f.title}`).join('\n');
+              if (!outputText) outputText = 'no findings';
+            } else {
+              outputText = routeResult?.reason || '';
+            }
+          } catch (err) {
+            outputText = `[LIVE ERROR] ${(err as Error).message}`;
+          }
+        } else {
+          outputText = routeResult?.reason || '';
+        }
+
+        const result = scoreTaskEval(tc, {
+          routeResult,
+          toolCalls,
+          outputText,
+          durationMs: Date.now() - caseStart,
+        });
+
+        results.push(result);
+        const icon = result.passed ? '✅' : '❌';
+        const dur = result.durationMs > 0 ? ` (${result.durationMs}ms)` : '';
+        if (isLive) {
+          console.log(`  ${icon} [${tc.risk}] ${tc.suite}/${tc.id}${dur} files=${result.score.filesHit}/${result.score.filesExpected} out=${result.score.outputHits}/${result.score.outputExpected}`);
+        } else {
+          console.log(`  ${icon} [${tc.risk}] ${tc.suite}/${tc.id}${dur}`);
+        }
+      }
+
+      const report = generateTaskEvalReport(results);
+      console.log('');
+      console.log(formatTaskEvalReport(report));
+      return;
+    }
+
     if (target !== 'router') {
-      console.log('当前只支持 eval router');
+      console.log('当前支持: dscode eval router | dscode eval task');
       return;
     }
 
@@ -513,10 +669,11 @@ program
       if (sessions.length === 0) { console.log('📝 暂无历史会话'); return; }
       console.log(`📝 共 ${sessions.length} 个会话:\n`);
       for (const s of sessions.slice(0, 20)) {
+        if (!s.id) continue;
         const date = new Date(s.createdAt).toLocaleString('zh-CN');
         const icon = s.completed ? '✅' : '⏳';
         console.log(`  ${icon} [${s.id.slice(0, 20)}]`);
-        console.log(`     ${date}  ${s.taskDescription.slice(0, 50)}`);
+        console.log(`     ${date}  ${(s.taskDescription || '').slice(0, 50)}`);
         console.log('');
       }
     } else if (action === 'delete' && target) {
@@ -533,6 +690,113 @@ program
     }
   });
 
+// Workflow 管理
+program
+  .command('workflow <action> [target]')
+  .description('工作流管理 (init / validate <file> / run <file|id> / list / runs / show <runId>)')
+  .option('--input <json>', '工作流输入参数 (JSON)')
+  .option('--write', '启用写模式', false)
+  .action(async (action: string, target: string | undefined, options: Record<string, string>) => {
+    const { cmdWorkflowInit, cmdWorkflowValidate, cmdWorkflowRun, cmdWorkflowList, cmdWorkflowRuns, cmdWorkflowShow } = await import('./commands/workflow.js');
+    const workspaceRoot = process.cwd();
+    const mode = options.write ? 'auto' : 'readonly';
+
+    switch (action) {
+      case 'init':
+        await cmdWorkflowInit(workspaceRoot);
+        break;
+      case 'validate':
+        if (!target) { console.log('用法: dscode workflow validate <file>'); return; }
+        await cmdWorkflowValidate(target);
+        break;
+      case 'run':
+        if (!target) { console.log('用法: dscode workflow run <file|id> [--input <json>] [--write]'); return; }
+        await cmdWorkflowRun(target, workspaceRoot, mode, options.input);
+        break;
+      case 'list':
+        await cmdWorkflowList(workspaceRoot);
+        break;
+      case 'runs':
+        await cmdWorkflowRuns(workspaceRoot);
+        break;
+      case 'show':
+        if (!target) { console.log('用法: dscode workflow show <runId>'); return; }
+        await cmdWorkflowShow(workspaceRoot, target);
+        break;
+      default:
+        console.log(`未知操作: ${action}`);
+        console.log('用法: dscode workflow <init|validate|run|list|runs|show>');
+    }
+  });
+
+// AutoFix — 自主修复闭环
+program
+  .command('autofix')
+  .description('自动修复项目问题 (audit → repair → verify → retry)')
+  .option('-s, --scope <scopes>', '修复范围 (逗号分隔): security,type-safety,config,test,maintainability', 'all')
+  .option('-r, --retries <n>', '每个问题最大修复轮次', '3')
+  .option('--verify <command>', '验证命令', 'pnpm typecheck')
+  .option('--min-severity <level>', '最低修复严重度: low/medium/high', 'low')
+  .option('--write', '启用写模式（默认只读）', false)
+  .option('--dry-run', '仅报告，不修改', false)
+  .action(async (options: Record<string, string>) => {
+    const { runAutoFixLoop } = await import('deepseek-code-core');
+
+    const config = loadConfig();
+    const workingDir = process.cwd();
+    const mode = options.write ? 'auto' : 'readonly';
+
+    const scopes = options.scope === 'all'
+      ? undefined
+      : (options.scope as string).split(',').map(s => s.trim()) as any;
+
+    if (options.dryRun) {
+      console.log('🔍 Dry Run 模式：仅审查，不修改');
+      console.log(`   范围: ${options.scope}`);
+      console.log(`   严重度阈值: ${options.minSeverity}`);
+      console.log('');
+    }
+
+    const result = await runAutoFixLoop({
+      workingDir,
+      scopes,
+      maxRetries: parseInt(options.retries as string, 10) || 3,
+      verifyCommand: options.verify as string,
+      mode: options.dryRun ? 'readonly' : (mode as 'readonly' | 'auto'),
+      minSeverity: options.minSeverity as 'low' | 'medium' | 'high',
+      onProgress: (step) => console.log(step),
+    });
+
+    console.log('');
+    console.log('═══════════════════════════════════════');
+    console.log(`  AutoFix 报告`);
+    console.log('═══════════════════════════════════════');
+    console.log(`  总发现:  ${result.totalFindings}`);
+    console.log(`  已修复:  ${result.fixed}`);
+    console.log(`  失败:    ${result.failed}`);
+    console.log(`  跳过:    ${result.skipped}`);
+    console.log(`  耗时:    ${(result.elapsedMs / 1000).toFixed(1)}s`);
+    console.log('───────────────────────────────────────');
+
+    if (result.attempts.length > 0) {
+      console.log('');
+      for (const a of result.attempts) {
+        const icon = a.status === 'fixed' ? '✅' : a.status === 'failed' ? '❌' : a.status === 'rolled_back' ? '🔄' : '⏭️';
+        console.log(`  ${icon} [${a.severity}] ${a.findingTitle}`);
+        if (a.status === 'fixed') console.log(`      ${a.attempt} 轮修复成功`);
+        if (a.status === 'failed' || a.status === 'rolled_back') console.log(`      ${a.attempt} 轮 | ${a.error || '验证未通过'}`);
+      }
+    }
+
+    console.log('═══════════════════════════════════════');
+    console.log(result.summary);
+
+    if (mode === 'readonly' && !options.dryRun) {
+      console.log('');
+      console.log('💡 添加 --write 参数执行实际修复');
+    }
+  });
+
 program.parse();
 
 // ============================================================
@@ -546,7 +810,7 @@ async function runTask(
   baseUrl: string,
   modelStrategy: string,
   workingDir: string,
-  readOnly: boolean,
+  runMode: 'plan' | 'edit' | 'auto',
   dryRun: boolean,
   resumeSessionId?: string,
 ) {
@@ -558,7 +822,7 @@ async function runTask(
 `);
   console.log(`📁 项目: ${workingDir}`);
   console.log(`🧠 策略: ${modelStrategy}`);
-  console.log(`🔒 模式: ${readOnly ? '只读分析' : '读写'}`);
+  console.log(`🔒 模式: ${runMode === 'plan' ? '📋 计划(只读)' : runMode === 'edit' ? '✏️ 编辑(审批)' : '🚀 自主(全自动)'}`);
   if (dryRun) console.log(`📋 计划模式: 仅生成计划，不执行`);
   console.log('');
 
@@ -590,13 +854,15 @@ async function runTask(
         return 'deny';
       }
 
-      // 只读模式：拒绝所有写操作
-      if (readOnly) {
-        console.log(`\n🔒 只读模式，已拒绝: ${req.type} → ${req.target}`);
+      // plan 模式：拒绝写操作
+      if (runMode === 'plan') {
+        console.log(`\n📋 计划模式，已拒绝: ${req.type} → ${req.target}`);
         return 'deny';
       }
+      // auto 模式：直接放行
+      if (runMode === 'auto') return 'allow_once';
 
-      // 读写模式：交互确认
+      // edit 模式：交互确认
       console.log(`\n⚠️  确认操作`);
       console.log(`   类型: ${req.type}`);
       console.log(`   目标: ${req.target}`);
@@ -624,7 +890,7 @@ async function runTask(
     router,
     tools,
     memory,
-    readOnly,
+    readOnly: runMode === 'plan',
     permissionManager: permManager,
     resumeSessionId,
     onConfirm: async (message: string) => {
@@ -662,8 +928,11 @@ async function interactiveMode(
   baseUrl: string,
   modelStrategy: string,
   workingDir: string,
-  readOnly: boolean,
+  initialMode: 'plan' | 'edit' | 'auto',
 ) {
+  // 三模式: plan(计划-只读) / edit(编辑-需审批) / auto(自主-全自动)
+  let currentMode: 'plan' | 'edit' | 'auto' = initialMode;
+
   console.log(`
 ╔══════════════════════════════════════╗
 ║       🤖 DeepSeek Code CLI          ║
@@ -672,17 +941,60 @@ async function interactiveMode(
 `);
   console.log(`📁 当前项目: ${path.basename(workingDir)}`);
   console.log(`🧠 模型策略: ${modelStrategy}`);
-  console.log(`🔒 模式: ${readOnly ? '只读分析' : '读写'}`);
+  console.log(`🔒 当前模式: ${currentMode === 'plan' ? '📋 计划(只读)' : currentMode === 'edit' ? '✏️ 编辑(审批)' : '🚀 自主(全自动)'}`);
   console.log('');
   console.log('输入任务描述开始，或输入以下命令：');
-  console.log('  /help     - 帮助');
+  console.log('  /plan     - 📋 计划模式(只读/分析/搜索)');
+  console.log('  /edit     - ✏️ 编辑模式(写操作需审批)');
+  console.log('  /auto     - 🚀 自主模式(全自动执行)');
   console.log('  /diff     - 查看 Git diff');
-  console.log('  /status   - 查看 Git 状态');
   console.log('  /sessions - 查看历史会话');
-  console.log('  /write    - 切换读写模式');
   console.log('  /new      - 开始新会话');
   console.log('  /exit     - 退出');
   console.log('');
+
+  // ═══ 三模式权限管理器 ═══
+  // plan: 只读, 写操作触发升级提示
+  // edit: 写操作需审批 (y=本次/a=免审/n=拒绝)
+  // auto: 全自动放行
+  const sessionApprovals = new Set<string>();
+  const permManager = new PermissionManager(
+    createDefaultPermissionConfig(async (req: PermissionRequest) => {
+      if (req.risk === 'safe') return 'allow_once';
+      if (req.risk === 'forbidden') { console.log(`\n⛔ 禁止操作: ${req.target.slice(0, 80)}`); return 'deny'; }
+
+      // plan 模式 + 写操作 → 提议升到 edit 模式
+      if (currentMode === 'plan') {
+        const answer = await new Promise<string>((resolve) => rl.question(
+          `\n📋 计划模式不能执行写操作。切换到 ✏️ 编辑模式？[y]切换并执行 [n]拒绝: `, resolve));
+        if (answer.trim().toLowerCase() === 'y') {
+          currentMode = 'edit';
+          console.log('   ✏️ 已切换到编辑模式。后续写操作将逐个审批。\n');
+          return 'allow_once';
+        }
+        console.log('   ❌ 已拒绝\n');
+        return 'deny';
+      }
+
+      // auto 模式 → 全自动
+      if (currentMode === 'auto') return 'allow_once';
+
+      // edit 模式 → 逐项审批
+      if (sessionApprovals.has(req.type)) return 'allow_once';
+
+      const riskLabel = req.risk === 'dangerous' ? '🔴 高风险' : '🟡';
+      console.log(`\n${riskLabel} ${req.type}: ${req.reason}`);
+      if (req.risk === 'dangerous') console.log(`   ⚠️  破坏性操作，请确认`);
+      const answer = await new Promise<string>((resolve) => rl.question(
+        '   [y]允许 [n]拒绝 [a]免审此类 [auto]切自主模式: ', resolve));
+      const a = answer.trim().toLowerCase();
+      if (a === 'auto') { currentMode = 'auto'; console.log('   🚀 已切换到自主模式\n'); return 'allow_once'; }
+      if (a === 'a') { sessionApprovals.add(req.type); console.log('   ✅ 已免审\n'); return 'allow_once'; }
+      if (a === 'y' || a === 'yes' || a === '') { console.log(''); return 'allow_once'; }
+      console.log('   ❌ 已拒绝\n');
+      return 'deny';
+    }),
+  );
 
   const readline = await import('node:readline');
   const rl = readline.createInterface({
@@ -845,10 +1157,16 @@ async function interactiveMode(
       rl.prompt();
       return;
     }
-    if (input === '/write' || input === 'write') {
-      readOnly = !readOnly;
-      sharedMessages = null; // 切换模式清上下文
-      console.log(`🔓 已切换为 ${readOnly ? '只读' : '读写'} 模式。${readOnly ? '写操作将被拦截。' : '我可以创建/修改文件了。'}`);
+    if (input === '/plan' || input === '/edit' || input === '/auto') {
+      const prev = currentMode;
+      if (input === '/plan') currentMode = 'plan';
+      else if (input === '/edit') currentMode = 'edit';
+      else currentMode = 'auto';
+      if (prev !== currentMode) {
+        sharedMessages = null; lastAgentResult = null; pendingAction = undefined; conversationFocus = undefined;
+        const labels: Record<string, string> = { plan: '📋 计划(只读)', edit: '✏️ 编辑(审批)', auto: '🚀 自主(全自动)' };
+        console.log(`🔄 ${labels[prev]} → ${labels[currentMode]}。上下文已重置。`);
+      }
       rl.prompt();
       return;
     }
@@ -883,13 +1201,13 @@ async function interactiveMode(
     if (input === '/help') {
       console.log(`
 可用命令：
-  /help     - 显示此帮助
-  /write    - 切换读写模式 (默认只读)
-  /exit     - 退出
+  /plan     - 📋 计划模式(只读/分析/搜索)
+  /edit     - ✏️ 编辑模式(写操作需审批)
+  /auto     - 🚀 自主模式(全自动执行)
   /diff     - 查看 Git diff
-  /status   - 查看 Git 状态
   /sessions - 查看历史会话
   /new      - 开始新会话
+  /exit     - 退出
   其他内容   - 作为任务描述执行
 `);
       rl.prompt();
@@ -911,31 +1229,25 @@ async function interactiveMode(
       return;
     }
 
-    // 自动检测写操作需求
-    const writeKeywords = /创建|写入|修改.*文件|删除.*文件|生成.*文件|新建.*文件|重构|安装.*依赖/i;
-    if (readOnly && writeKeywords.test(input)) {
-      console.log(`\n⚠️  这个任务可能需要写文件，当前为只读模式`);
-      console.log('   输入 y 切换为读写模式执行，或直接回车保持只读分析：');
-      const answer = await new Promise<string>((resolve) => rl.question('   > ', resolve));
-      if (answer.trim().toLowerCase() === 'y') {
-        readOnly = false;
-        sharedMessages = null;
-        console.log('🔓 已切换为读写模式\n');
-      }
+    // 意图分流（带 spinner，避免 silent gap）
+    const spinner = startSpinner('分析意图');
+    const routerMode = currentMode === 'plan' ? 'readonly' : currentMode === 'edit' ? 'ask' : 'auto';
+    let route;
+    try {
+      route = await routeInput(input, {
+        mode: routerMode,
+        projectName: path.basename(workingDir),
+        projectPath: workingDir,
+        lastAgentResult: lastAgentResult ?? undefined,
+        pendingAction,
+        lastExternalResource: prevState?.lastExternalResource,
+        conversationFocus,
+        recentMessages: chatHistory.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+      }, createLLMRouterClient(apiKey, baseUrl));
+    } finally {
+      stopSpinner(spinner);
     }
-
-    // 意图分流
-    const route = await routeInput(input, {
-      mode: readOnly ? 'readonly' : 'ask',
-      projectName: path.basename(workingDir),
-      projectPath: workingDir,
-      lastAgentResult: lastAgentResult ?? undefined,
-      pendingAction,
-      lastExternalResource: prevState?.lastExternalResource,
-      conversationFocus,
-      recentMessages: chatHistory.slice(-6).map((m) => ({ role: m.role, content: m.content })),
-    }, createLLMRouterClient(apiKey, baseUrl));
-    logRoute(route, readOnly ? 'readonly' : 'ask');
+    logRoute(route, routerMode);
     // Execution Dispatcher: url_fetch_pipeline
     if (route.execution === 'url_fetch_pipeline' && route.target?.type === 'url') {
       const { runUrlFetchPipeline, formatUrlFetchResult } = await import('deepseek-code-core');
@@ -950,26 +1262,9 @@ async function interactiveMode(
       rl.prompt();
       return;
     }
-    // audit_task 走 Agent 审查
-    // Execution Dispatcher: debug_task → Repair Pipeline
-    if (route.intent === 'debug_task') {
-      const { runRepairPipeline } = await import('deepseek-code-core');
-      const proClient = apiKey ? createProClient(apiKey, baseUrl) : undefined;
-      const result = await runRepairPipeline({ workingDir, taskDescription: input, mode: readOnly ? 'readonly' : 'ask', proClient, onProgress: (s) => console.log(`  ⏳ ${s}`) });
-      console.log(result.summary);
-      if (result.errorLocation) console.log(`📍 ${result.errorLocation.file ? `${result.errorLocation.file}:${result.errorLocation.line ?? '?'}` : ''} [${result.errorLocation.category}] ${result.errorLocation.message.slice(0, 120)}`);
-      if (result.rootCause) console.log(`\n🔍 根因分析:\n${result.rootCause}`);
-      if (result.suggestedFix) console.log(`💡 ${result.suggestedFix}`);
-      if (result.filesExamined.length > 0) console.log(`📁 检查文件: ${result.filesExamined.join(', ')}`);
-      pushHistory({ role: 'assistant', content: `[Repair] ${result.summary}` });
-      lastAgentResult = { task: input, intent: 'debug_task', execution: 'agent_readonly', summary: result.summary, filesRead: result.filesExamined, toolsUsed: ['repair_pipeline'], findings: result.rootCause ? [result.rootCause] : [], nextSuggestions: result.suggestedFix ? [result.suggestedFix] : [], completedAt: new Date().toISOString() };
-      pendingAction = result.patchProposal ? `修复补丁待确认: ${result.patchProposal.slice(0, 100)}` : undefined;
-      persistState();
-      rl.prompt();
-      return;
-    }
-    // Execution Dispatcher: diff review
-    if (route.intent === 'command_status' && input.includes('diff')) {
+    // Execution Dispatcher: diff review（必须在 debug_task 之前，防误入 repair pipeline）
+    // 匹配 command_status+diff（简单查看）或 debug_task+diff（带具体审查目标如安全/测试/API）
+    if ((route.intent === 'command_status' || route.intent === 'debug_task') && /diff|git diff|改动|变更|changed/i.test(input)) {
       const { runReviewDiffPipeline } = await import('deepseek-code-core');
       console.log('📋 Review Diff Pipeline\n');
       const result = await runReviewDiffPipeline({ workingDir, onProgress: (s) => console.log(`  ⏳ ${s}`) });
@@ -992,6 +1287,23 @@ async function interactiveMode(
       rl.prompt();
       return;
     }
+    // Execution Dispatcher: debug_task → Repair Pipeline（非 diff 类）
+    if (route.intent === 'debug_task') {
+      const { runRepairPipeline } = await import('deepseek-code-core');
+      const proClient = apiKey ? createProClient(apiKey, baseUrl) : undefined;
+      const result = await runRepairPipeline({ workingDir, taskDescription: input, mode: routerMode, proClient, onProgress: (s) => console.log(`  ⏳ ${s}`) });
+      console.log(result.summary);
+      if (result.errorLocation) console.log(`📍 ${result.errorLocation.file ? `${result.errorLocation.file}:${result.errorLocation.line ?? '?'}` : ''} [${result.errorLocation.category}] ${result.errorLocation.message.slice(0, 120)}`);
+      if (result.rootCause) console.log(`\n🔍 根因分析:\n${result.rootCause}`);
+      if (result.suggestedFix) console.log(`💡 ${result.suggestedFix}`);
+      if (result.filesExamined.length > 0) console.log(`📁 检查文件: ${result.filesExamined.join(', ')}`);
+      pushHistory({ role: 'assistant', content: `[Repair] ${result.summary}` });
+      lastAgentResult = { task: input, intent: 'debug_task', execution: 'agent_readonly', summary: result.summary, filesRead: result.filesExamined, toolsUsed: ['repair_pipeline'], findings: result.rootCause ? [result.rootCause] : [], nextSuggestions: result.suggestedFix ? [result.suggestedFix] : [], completedAt: new Date().toISOString() };
+      pendingAction = result.patchProposal ? `修复补丁待确认: ${result.patchProposal.slice(0, 100)}` : undefined;
+      persistState();
+      rl.prompt();
+      return;
+    }
     if (route.execution !== 'agent_readonly' && route.execution !== 'agent_plan' && route.execution !== 'agent_execute') {
       chatHistory = await handleLlmDirect(input, config, apiKey, baseUrl, chatHistory, lastAgentResult, chatSummaries);
       persistState();
@@ -1003,7 +1315,7 @@ async function interactiveMode(
     const newMsgs = await runChatTurn(
       input,
       isFirstMessage ? null : sharedMessages,
-      config, apiKey, baseUrl, modelStrategy, workingDir, readOnly,
+      config, apiKey, baseUrl, modelStrategy, workingDir, currentMode, permManager,
     );
     if (newMsgs) {
       sharedMessages = newMsgs;
@@ -1065,7 +1377,8 @@ async function runChatTurn(
   input: string,
   messages: import('deepseek-code-shared').ChatMessage[] | null,
   config: DeepSeekCodeConfig,
-  apiKey: string, baseUrl: string, modelStrategy: string, workingDir: string, readOnly: boolean,
+  apiKey: string, baseUrl: string, modelStrategy: string, workingDir: string, currentMode: 'plan' | 'edit' | 'auto',
+  permManager?: PermissionManager,
 ): Promise<import('deepseek-code-shared').ChatMessage[] | null> {
   const routerConfig: import('deepseek-code-core').ModelRouterConfig = {
     strategy: modelStrategy as 'auto' | 'pro' | 'flash',
@@ -1075,12 +1388,14 @@ async function runChatTurn(
   const tools = createToolExecutors({ workingDir });
   const memory = new FileMemoryStore(workingDir);
   const model = router.getClient(router.selectModel(input));
-  const availableTools = readOnly ? READ_ONLY_TOOLS : [...READ_ONLY_TOOLS, ...WRITE_TOOLS];
+  const isReadOnly = currentMode === 'plan';
+  const availableTools = isReadOnly ? READ_ONLY_TOOLS : [...READ_ONLY_TOOLS, ...WRITE_TOOLS];
 
   // 如果没有历史消息，走完整流程；否则追加到已有对话
   if (!messages) {
     const result = await runAgentLoop(input, {
-      workingDir, router, tools, memory, readOnly, streaming: true,
+      workingDir, router, tools, memory, readOnly: currentMode === 'plan', streaming: true,
+      permissionManager: permManager,
       onConfirm: async () => true,
     });
     if (!result.success || !result.session) return null;
@@ -1123,7 +1438,7 @@ async function runChatTurn(
   };
   const result = await continueLoop(
     chatSession,
-    messages, model, availableTools, workingDir, tools, memory, undefined, readOnly, true, Date.now(), 20, undefined,
+    messages, model, availableTools, workingDir, tools, memory, undefined, currentMode === 'plan', true, Date.now(), 20, undefined,
   );
   if (result.success && result.session) {
     for (const step of result.session.steps) {

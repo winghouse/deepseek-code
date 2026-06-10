@@ -1,0 +1,422 @@
+[
+  {
+    "id": "phase1_0",
+    "input": "审查当前项目代码",
+    "output": "代码中异常静默掩盖错误，缓存穿透拉低性能，URL校验正则遗漏私有地址段。",
+    "latencyMs": 3134,
+    "tokensPrompt": 85,
+    "tokensCompletion": 91,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_1",
+    "input": "审查 packages/core/src/agent/router.ts",
+    "output": "核心发现：executor.ts 存在3处静默异常，web-search.ts 的正则缺少 169.254 段存在安全隐患，scanner 缓存命中率可优化。",
+    "latencyMs": 4542,
+    "tokensPrompt": 89,
+    "tokensCompletion": 186,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_2",
+    "input": "分析项目架构",
+    "output": "executor.ts静默吞掉3处异常影响排障，scanner缓存命中率可调优，web-search的URL校验遗漏169.254网段。",
+    "latencyMs": 3801,
+    "tokensPrompt": 84,
+    "tokensCompletion": 120,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_3",
+    "input": "检查安全漏洞",
+    "output": "executor.ts静默吞异常掩盖故障风险，web-search.ts校验缺失169.254段可致内部地址暴露。",
+    "latencyMs": 2613,
+    "tokensPrompt": 84,
+    "tokensCompletion": 88,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_4",
+    "input": "审查代码质量",
+    "output": "关键发现：executor.ts存在3处静默异常，增加调试难度；web-search.ts的正则验证未覆盖169.254段，存在安全绕过风险。",
+    "latencyMs": 2386,
+    "tokensPrompt": 84,
+    "tokensCompletion": 89,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_5",
+    "input": "检查有没有死代码",
+    "output": "发现 executor.ts 存在 3 处静默吞异常，scanner.ts 缓存命中率可优化，存在隐蔽运行时风险。",
+    "latencyMs": 3206,
+    "tokensPrompt": 85,
+    "tokensCompletion": 119,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_6",
+    "input": "审查类型安全",
+    "output": "executor.ts静默异常可能掩盖严重错误，web-search.ts正则缺少169.254段存在安全隐患，应尽快修复。",
+    "latencyMs": 3716,
+    "tokensPrompt": 84,
+    "tokensCompletion": 153,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_7",
+    "input": "分析性能瓶颈",
+    "output": "性能瓶颈主要源于executor.ts的3处静默异常吞噬错误信息导致问题难以定位，以及web-search.ts的URL验证正则遗漏169.254段引发内部服务泄露风险。",
+    "latencyMs": 3172,
+    "tokensPrompt": 84,
+    "tokensCompletion": 81,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_8",
+    "input": "审查错误处理",
+    "output": "executor.ts存在3处静默异常catch{}，应立即补充日志；web-search.ts的validateUrl正则需补全169.254/16私有地址段验证。",
+    "latencyMs": 2724,
+    "tokensPrompt": 84,
+    "tokensCompletion": 98,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_9",
+    "input": "检查测试覆盖",
+    "output": "executor.ts存在3处静默异常风险，web-search.ts的URL校验正则缺失169.254段，需修复并补充测试。",
+    "latencyMs": 1928,
+    "tokensPrompt": 84,
+    "tokensCompletion": 54,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_10",
+    "input": "审查依赖安全",
+    "output": "executor.ts存在3处静默异常隐藏错误，web-search.ts的URL验证正则遗漏169.254段，可能导致本地资源暴露。",
+    "latencyMs": 2695,
+    "tokensPrompt": 84,
+    "tokensCompletion": 91,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_11",
+    "input": "分析项目结构",
+    "output": "代码异常静默吞没、缓存策略低效及URL校验缺陷，可能导致关键错误遗漏和性能瓶颈，需优先修复executor.ts和web-search.ts。",
+    "latencyMs": 3168,
+    "tokensPrompt": 84,
+    "tokensCompletion": 99,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_12",
+    "input": "审查配置文件",
+    "output": "发现executor.ts存在3处静默异常，scanner.ts缓存命中率可优化，web-search.ts的URL验证正则缺少169.254段。",
+    "latencyMs": 2262,
+    "tokensPrompt": 83,
+    "tokensCompletion": 66,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_13",
+    "input": "检查硬编码密钥",
+    "output": "未发现硬编码密钥，但发现静默异常处理、缓存优化及URL校验遗漏169.254段等问题。",
+    "latencyMs": 5599,
+    "tokensPrompt": 85,
+    "tokensCompletion": 175,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_14",
+    "input": "审查交互逻辑",
+    "output": "executor.ts中3处catch{}静默吞异常，致流程错误无法暴露；web-search.ts的URL校验正则遗漏169.254/16段，存在SSRF风险。",
+    "latencyMs": 2816,
+    "tokensPrompt": 84,
+    "tokensCompletion": 102,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_15",
+    "input": "分析数据流",
+    "output": "executor.ts存在3处静默异常吞没错误，web-search.ts的正则漏检169.254段链路地址，scanner缓存命中率待优化。",
+    "latencyMs": 2674,
+    "tokensPrompt": 84,
+    "tokensCompletion": 101,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_16",
+    "input": "审查权限控制",
+    "output": "发现executor.ts存在3处静默异常，web-search.ts的URL校验正则缺失169.254网段，可能导致SSRF风险。",
+    "latencyMs": 2355,
+    "tokensPrompt": 84,
+    "tokensCompletion": 90,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_17",
+    "input": "检查日志输出",
+    "output": "executor.ts 3处静默吞异常需修复；web-search.ts 的 URL 校验正则遗漏 169.254 段，scanner.ts 缓存命中率待优化。",
+    "latencyMs": 2814,
+    "tokensPrompt": 84,
+    "tokensCompletion": 107,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_18",
+    "input": "审查异常处理",
+    "output": "executor.ts中3处静默异常易造成问题定位困难；web-search.ts的URL验证正则未拦截169.254段，存在安全隐患。",
+    "latencyMs": 2552,
+    "tokensPrompt": 84,
+    "tokensCompletion": 88,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_19",
+    "input": "分析模块耦合",
+    "output": "executor.ts内3处静默异常可能导致故障难以发现，scanner.ts缓存命中率低影响性能，web-search.ts的URL校验未覆盖169.254地址段。",
+    "latencyMs": 5457,
+    "tokensPrompt": 84,
+    "tokensCompletion": 200,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_20",
+    "input": "审查API设计",
+    "output": "executor.ts存在异常静默吞没，web-search.ts的URL校验缺少169.254地址段，易导致SSRF或错误隐藏。",
+    "latencyMs": 3604,
+    "tokensPrompt": 84,
+    "tokensCompletion": 117,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_21",
+    "input": "检查并发安全",
+    "output": "核心发现：executor.ts存在3处静默异常可能掩盖错误，scanner.ts缓存命中率待优化，web-search.ts的URL验证正则未覆盖169.254段。",
+    "latencyMs": 2178,
+    "tokensPrompt": 84,
+    "tokensCompletion": 66,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_22",
+    "input": "审查内存使用",
+    "output": "代码存在3处静默异常吞噬，缓存命中率可优化，且URL校验未覆盖169.254段。",
+    "latencyMs": 3205,
+    "tokensPrompt": 84,
+    "tokensCompletion": 109,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_23",
+    "input": "分析启动流程",
+    "output": "启动流程存在异常静默处理风险，scanner缓存命中率不足影响性能，web-search的URL校验缺失169.254内网段需修复。",
+    "latencyMs": 2890,
+    "tokensPrompt": 84,
+    "tokensCompletion": 94,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_24",
+    "input": "审查插件系统",
+    "output": "插件系统存在3处静默吞异常、缓存策略低效及URL校验缺漏169.254段，易导致故障隐蔽和SSRF风险。",
+    "latencyMs": 2418,
+    "tokensPrompt": 84,
+    "tokensCompletion": 77,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_25",
+    "input": "检查国际化支持",
+    "output": "发现executor.ts存在3处静默异常可能隐藏错误，scanner.ts缓存策略可提升性能，web-search.ts的URL验证遗漏169.254链路本地地址段。",
+    "latencyMs": 2407,
+    "tokensPrompt": 84,
+    "tokensCompletion": 103,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_26",
+    "input": "审查缓存策略",
+    "output": "缓存策略需优化：scanner.ts缓存命中率低，executor.ts中3处静默异常丢失错误信息，web-search.ts校验正则遗漏169.254段。",
+    "latencyMs": 2600,
+    "tokensPrompt": 84,
+    "tokensCompletion": 78,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_27",
+    "input": "分析数据库查询",
+    "output": "executor.ts存在3处静默异常导致故障难排查，scanner.ts缓存命中率待优化，web-search.ts校验正则遗漏169.254段。",
+    "latencyMs": 3554,
+    "tokensPrompt": 84,
+    "tokensCompletion": 137,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_28",
+    "input": "审查认证逻辑",
+    "output": "认证逻辑中存在3处静默异常吞没错误，scanner缓存命中率待优化，web-search的URL校验正则遗漏169.254网段。",
+    "latencyMs": 2444,
+    "tokensPrompt": 84,
+    "tokensCompletion": 82,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  },
+  {
+    "id": "phase1_29",
+    "input": "检查XSS防护",
+    "output": "静默异常阻碍故障排查，缓存策略待优化，URL校验遗漏易致SSRF。",
+    "latencyMs": 5307,
+    "tokensPrompt": 85,
+    "tokensCompletion": 185,
+    "passed": true,
+    "checks": [
+      "has_content",
+      "concise",
+      "direct"
+    ]
+  }
+]

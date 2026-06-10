@@ -38,6 +38,8 @@ export interface ChatOptions {
   responseFormat?: 'json_object' | 'text';
   /** 推理深度 (DeepSeek V4-Pro reasoning_effort) */
   reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
+  /** 禁用 thinking (Flash 模型默认开启 thinking, 会消耗 output tokens) */
+  disableThinking?: boolean;
 }
 
 /** DeepSeek API 配置 */

@@ -2,6 +2,7 @@
 // DeepSeek Code — 共享工具函数
 // ============================================================
 
+import { statSync } from 'node:fs';
 import { MODEL_PRO, MODEL_FLASH } from './types.js';
 
 /**
@@ -77,8 +78,6 @@ export function isSensitiveFile(filePath: string): boolean {
 /** 文件指纹 (mtime:size)，用于检测文件变化 */
 export function fileFingerprint(filePath: string): string {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { statSync } = require('fs');
     const stat = statSync(filePath);
     return `${stat.mtimeMs.toFixed(0)}:${stat.size}`;
   } catch {

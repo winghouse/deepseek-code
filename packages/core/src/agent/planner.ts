@@ -15,20 +15,7 @@ function buildPlanPrompt(task: string, mode?: string): string {
   // 审查/审计/优化类任务的专用引导
   const isAudit = /审查|审计|检查.*优化|代码质量|代码.*问题|安全.*漏洞|架构.*问题/i.test(task);
   const auditExample = isAudit
-    ? `\n这是一个代码审查任务。参照以下示例生成计划（根据实际项目调整文件路径）：\n` +
-      `{"steps":[` +
-      `{"order":1,"action":"read","description":"读取项目配置了解技术栈和依赖","targetFiles":["package.json","tsconfig.base.json"]},` +
-      `{"order":2,"action":"read","description":"读取核心入口和路由模块","targetFiles":["packages/core/src/index.ts","packages/cli/src/index.ts"]},` +
-      `{"order":3,"action":"read","description":"审查安全/权限模块","targetFiles":["packages/core/src/safety/permissions.ts"]},` +
-      `{"order":4,"action":"read","description":"审查错误处理和边界情况","targetFiles":["packages/core/src/tools/executors.ts"]},` +
-      `{"order":5,"action":"read","description":"审查最近修改的模块","targetFiles":["<从 git diff 找到的文件>"]},` +
-      `{"order":6,"action":"verify","description":"逐条验证前几步的发现：用 read_file_range 确认关键证据的文件:行号，用 glob 验证涉及的文件是否存在，用 search_code 确认引用关系"}],` +
-      `"complexity":"medium","recommendedModel":MODEL_PRO}\n` +
-      `铁律（违反会导致幻觉）：\n` +
-      `- 说"缺少X"前，必须先用 glob X 或 search_code X 确认真的没有\n` +
-      `- 说"X行/个/次"等数值前，必须先用 read_file 或 search_code 确认实际数字\n` +
-      `- 每个发现必须标注证据来源，格式: [文件:行号] 实际代码片段\n` +
-      `- 禁止"读取项目文件""分析项目文件"这类无具体目标/文件名的步骤`
+    ? `\n这是代码审查任务。步骤写明操作对象(文件/目录/关键词), 禁止输出分析结论。审查最多8步。只输出 JSON。`
     : '';
 
   // 批量读取类任务引导

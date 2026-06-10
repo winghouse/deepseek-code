@@ -13,7 +13,7 @@ export class DeepSeekClient implements ModelClient {
     this.modelName = modelName;
     this.config = {
       baseUrl: 'https://api.deepseek.com',
-      timeout: 120_000,
+      timeout: 180_000,
       ...config,
     };
   }
@@ -43,6 +43,11 @@ export class DeepSeekClient implements ModelClient {
       // DeepSeek V4: JSON 模式 + 推理深度
       if (options?.responseFormat) body.response_format = { type: options.responseFormat };
       if (options?.reasoningEffort) body.reasoning_effort = options.reasoningEffort;
+    }
+
+    // Flash 默认 thinking 会消耗大量 output tokens → Plan 生成等简单任务禁用
+    if (options?.disableThinking) {
+      body.thinking = { type: 'disabled' };
     }
 
     let lastError = null;
@@ -112,6 +117,10 @@ export class DeepSeekClient implements ModelClient {
         },
       }));
       body.tool_choice = options?.toolChoice ?? 'auto';
+    }
+
+    if (options?.disableThinking) {
+      body.thinking = { type: 'disabled' };
     }
 
     const response = await fetch(url, {

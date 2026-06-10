@@ -159,7 +159,9 @@ describe('continueLoop', () => {
       { content: '', tool_calls: [readA('c2')], finish_reason: 'tool_calls', usage: { prompt_tokens: 10, completion_tokens: 1, total_tokens: 11 } },
       { content: '', tool_calls: [readA('c3')], finish_reason: 'tool_calls', usage: { prompt_tokens: 10, completion_tokens: 1, total_tokens: 11 } },
       { content: '', tool_calls: [readA('c4')], finish_reason: 'tool_calls', usage: { prompt_tokens: 10, completion_tokens: 1, total_tokens: 11 } },
-      { content: 'should not reach', tool_calls: [readB('c5')], finish_reason: 'tool_calls', usage: { prompt_tokens: 10, completion_tokens: 1, total_tokens: 11 } },
+      { content: '', tool_calls: [readA('c5')], finish_reason: 'tool_calls', usage: { prompt_tokens: 10, completion_tokens: 1, total_tokens: 11 } },
+      { content: '', tool_calls: [readA('c6')], finish_reason: 'tool_calls', usage: { prompt_tokens: 10, completion_tokens: 1, total_tokens: 11 } },
+      { content: 'should not reach', tool_calls: [readB('c7')], finish_reason: 'tool_calls', usage: { prompt_tokens: 10, completion_tokens: 1, total_tokens: 11 } },
     ]);
 
     const tools = createToolExecutors({ workingDir: tmpDir });

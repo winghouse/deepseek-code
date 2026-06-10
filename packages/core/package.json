@@ -1,6 +1,6 @@
 {
   "name": "deepseek-code-core",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "description": "DeepSeek Code Agent Runtime 核心",
   "license": "MIT",
   "repository": {

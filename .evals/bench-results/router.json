@@ -1,0 +1,996 @@
+[
+  {
+    "id": "router_0",
+    "input": "帮我审查一下当前项目代码",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_readonly\", \"confidence\": 0.95, \"reason\": \"用户明确要求审查项目代码，属于代码审计任务，需要只读访问代码库进行分析。\"}",
+    "latencyMs": 1284,
+    "tokensPrompt": 91,
+    "tokensCompletion": 51,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_1",
+    "input": "修复 router.ts 的类型错误",
+    "output": "{\"intent\": \"debug_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户明确要求修复类型错误，属于调试任务，需要规划执行步骤\"}",
+    "latencyMs": 1161,
+    "tokensPrompt": 91,
+    "tokensCompletion": 45,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_2",
+    "input": "跑一个hello脚本",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户要求运行一个hello脚本，属于代码执行任务，需要agent规划执行步骤。\"}",
+    "latencyMs": 1009,
+    "tokensPrompt": 89,
+    "tokensCompletion": 48,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_3",
+    "input": "解释一下这个项目的架构",
+    "output": "{\n  \"intent\": \"explain_project\",\n  \"execution\": \"agent_readonly\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户请求解释项目架构，属于项目说明类任务，无需执行代码或调试，适合只读代理处理。\"\n}",
+    "latencyMs": 1503,
+    "tokensPrompt": 90,
+    "tokensCompletion": 61,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_4",
+    "input": "检查 git diff 有没有安全问题",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户要求检查git diff的安全问题，属于代码审计任务，需要代理规划执行步骤\"}",
+    "latencyMs": 1547,
+    "tokensPrompt": 91,
+    "tokensCompletion": 49,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_5",
+    "input": "你好",
+    "output": "{\"intent\": \"small_talk\", \"execution\": \"llm_direct\", \"confidence\": 0.95, \"reason\": \"用户打招呼，属于日常闲聊\"}",
+    "latencyMs": 1335,
+    "tokensPrompt": 86,
+    "tokensCompletion": 38,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_6",
+    "input": "讲一下 loop.ts 是怎么工作的",
+    "output": "{\n  \"intent\": \"explain_project\",\n  \"execution\": \"agent_readonly\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户请求解释特定文件 loop.ts 的工作原理，属于项目解释任务，无需执行操作，只需读取并解释代码。\"\n}",
+    "latencyMs": 1969,
+    "tokensPrompt": 92,
+    "tokensCompletion": 62,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_7",
+    "input": "帮我写一个登录页面",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户明确要求编写一个登录页面的代码，属于代码生成任务，需要规划并执行代码编写。\"}",
+    "latencyMs": 1280,
+    "tokensPrompt": 90,
+    "tokensCompletion": 52,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_8",
+    "input": "继续",
+    "output": "{\"intent\": \"small_talk\", \"execution\": \"llm_direct\", \"confidence\": 0.9, \"reason\": \"用户输入'继续'，属于简短对话延续，无明确代码或项目相关任务意图。\"}",
+    "latencyMs": 1487,
+    "tokensPrompt": 86,
+    "tokensCompletion": 52,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_9",
+    "input": "这个文件在哪个目录",
+    "output": "{\"intent\": \"unknown\", \"execution\": \"llm_direct\", \"confidence\": 0.3, \"reason\": \"用户询问文件目录位置，但未提供具体文件名或上下文，无法明确归类为代码、调试、审计等任务，属于一般性询问。\"}",
+    "latencyMs": 1458,
+    "tokensPrompt": 90,
+    "tokensCompletion": 61,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_10",
+    "input": "上面的链接内容是什么",
+    "output": "{\"intent\": \"unknown\", \"execution\": \"url_fetch_pipeline\", \"confidence\": 0.6, \"reason\": \"用户询问链接内容，需要获取URL信息，但未提供具体链接，意图不明确。\"}",
+    "latencyMs": 1309,
+    "tokensPrompt": 89,
+    "tokensCompletion": 51,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_11",
+    "input": "帮我看看这个项目",
+    "output": "{\"intent\": \"explain_project\", \"execution\": \"agent_readonly\", \"confidence\": 0.9, \"reason\": \"用户请求查看项目，需要读取项目文件并解释结构。\"}",
+    "latencyMs": 1321,
+    "tokensPrompt": 89,
+    "tokensCompletion": 44,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_12",
+    "input": "有哪些地方需要优化",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_plan\", \"confidence\": 0.85, \"reason\": \"用户询问优化点，属于代码审查或项目改进建议，需要分析代码结构或逻辑\"}",
+    "latencyMs": 1530,
+    "tokensPrompt": 89,
+    "tokensCompletion": 50,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_13",
+    "input": "有没有安全漏洞",
+    "output": "{\n  \"intent\": \"audit_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.85,\n  \"reason\": \"用户询问安全漏洞，属于代码审计任务，需要规划分析步骤。\"\n}",
+    "latencyMs": 1500,
+    "tokensPrompt": 88,
+    "tokensCompletion": 52,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_14",
+    "input": "生成一个测试用例",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户请求生成测试用例，属于代码生成任务，需要规划具体实现\"}",
+    "latencyMs": 1450,
+    "tokensPrompt": 89,
+    "tokensCompletion": 45,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_15",
+    "input": "怎么接入这个API",
+    "output": "{\n  \"intent\": \"code_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.85,\n  \"reason\": \"用户询问如何接入API，属于编程实现类任务，需要规划具体步骤。\"\n}",
+    "latencyMs": 1507,
+    "tokensPrompt": 89,
+    "tokensCompletion": 53,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_16",
+    "input": "能不能帮我把这段代码重构一下",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户明确请求代码重构，属于代码任务，需要规划重构步骤\"}",
+    "latencyMs": 1292,
+    "tokensPrompt": 92,
+    "tokensCompletion": 44,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_17",
+    "input": "退出",
+    "output": "{\"intent\": \"command_exit\", \"execution\": \"local_action\", \"confidence\": 1.0, \"reason\": \"用户明确表达了退出意图\"}",
+    "latencyMs": 1173,
+    "tokensPrompt": 86,
+    "tokensCompletion": 35,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_18",
+    "input": "帮我分析一下性能瓶颈",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_readonly\", \"confidence\": 0.85, \"reason\": \"用户请求分析性能瓶颈，属于代码审计或项目审查任务，需要只读分析，无需修改代码。\"}",
+    "latencyMs": 1464,
+    "tokensPrompt": 90,
+    "tokensCompletion": 54,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_19",
+    "input": "这个错误怎么修",
+    "output": "{\n  \"intent\": \"debug_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户询问如何修复错误，属于调试任务，需要规划执行步骤。\"\n}",
+    "latencyMs": 1431,
+    "tokensPrompt": 89,
+    "tokensCompletion": 51,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_20",
+    "input": "查看当前git状态",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"local_action\", \"confidence\": 0.95, \"reason\": \"用户请求查看git状态，属于代码相关任务，需要本地执行git命令\"}",
+    "latencyMs": 1453,
+    "tokensPrompt": 89,
+    "tokensCompletion": 45,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_21",
+    "input": "有没有文档需要更新",
+    "output": "{\"intent\": \"unknown\", \"execution\": \"llm_direct\", \"confidence\": 0.3, \"reason\": \"用户询问文档更新，但未明确指定具体任务类型，可能属于一般性询问。\"}",
+    "latencyMs": 1434,
+    "tokensPrompt": 89,
+    "tokensCompletion": 49,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_22",
+    "input": "帮我配置一下ESLint",
+    "output": "{\n  \"intent\": \"code_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户请求配置ESLint，属于代码配置任务，需要规划执行步骤。\"\n}",
+    "latencyMs": 1516,
+    "tokensPrompt": 91,
+    "tokensCompletion": 53,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_23",
+    "input": "检查有没有死代码",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_plan\", \"confidence\": 0.9, \"reason\": \"用户要求检查死代码，属于代码审计任务，需要规划执行步骤。\"}",
+    "latencyMs": 1447,
+    "tokensPrompt": 89,
+    "tokensCompletion": 47,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_24",
+    "input": "统计一下这个目录的文件行数",
+    "output": "{\n  \"intent\": \"code_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.85,\n  \"reason\": \"用户要求统计目录文件行数，属于代码相关任务，需要规划执行步骤（如遍历文件、统计行数）。\"\n}",
+    "latencyMs": 1753,
+    "tokensPrompt": 92,
+    "tokensCompletion": 62,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_25",
+    "input": "项目依赖有没有版本冲突",
+    "output": "{\n  \"intent\": \"audit_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.85,\n  \"reason\": \"用户询问项目依赖版本冲突，属于审计任务，需要分析依赖关系，适合使用agent_plan执行模式。\"\n}",
+    "latencyMs": 1604,
+    "tokensPrompt": 90,
+    "tokensCompletion": 61,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_26",
+    "input": "帮我生成 AGENTS.md",
+    "output": "{\n  \"intent\": \"code_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户请求生成AGENTS.md文件，属于代码生成任务，需要规划并执行文件创建。\"\n}",
+    "latencyMs": 1428,
+    "tokensPrompt": 90,
+    "tokensCompletion": 56,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_27",
+    "input": "解释 TypeScript 类型体操",
+    "output": "{\"intent\": \"explain_project\", \"execution\": \"llm_direct\", \"confidence\": 0.95, \"reason\": \"用户请求解释TypeScript类型体操，这是一个概念解释任务，适合直接使用LLM回答。\"}",
+    "latencyMs": 1531,
+    "tokensPrompt": 91,
+    "tokensCompletion": 52,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_28",
+    "input": "显示帮助",
+    "output": "{\"intent\": \"command_help\", \"execution\": \"llm_direct\", \"confidence\": 0.95, \"reason\": \"用户明确请求显示帮助信息，属于命令帮助意图。\"}",
+    "latencyMs": 1405,
+    "tokensPrompt": 87,
+    "tokensCompletion": 44,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_29",
+    "input": "讲一下上面提到的那个bug",
+    "output": "{\n  \"intent\": \"debug_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.85,\n  \"reason\": \"用户要求讲解一个bug，属于调试任务，需要agent规划分析步骤\"\n}",
+    "latencyMs": 1486,
+    "tokensPrompt": 91,
+    "tokensCompletion": 51,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_30",
+    "input": "用中文回答",
+    "output": "{\"intent\": \"small_talk\", \"execution\": \"llm_direct\", \"confidence\": 0.95, \"reason\": \"用户要求用中文回答，属于一般性对话，无需代码或项目相关操作。\"}",
+    "latencyMs": 1460,
+    "tokensPrompt": 88,
+    "tokensCompletion": 50,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_31",
+    "input": "Explain the project architecture",
+    "output": "{\n  \"intent\": \"explain_project\",\n  \"execution\": \"agent_readonly\",\n  \"confidence\": 0.95,\n  \"reason\": \"User explicitly asks to explain the project architecture, which is a direct match for the explain_p",
+    "latencyMs": 1477,
+    "tokensPrompt": 89,
+    "tokensCompletion": 56,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_32",
+    "input": "Fix the type error in router.ts",
+    "output": "{\"intent\": \"debug_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"User requests fixing a type error in a specific file, which is a debugging task requiring code analysis and modificat",
+    "latencyMs": 1565,
+    "tokensPrompt": 92,
+    "tokensCompletion": 52,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_33",
+    "input": "Run a hello script",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"agent_plan\", \"confidence\": 0.9, \"reason\": \"用户要求运行一个脚本，属于代码执行任务，需要代理规划执行步骤。\"}",
+    "latencyMs": 1429,
+    "tokensPrompt": 89,
+    "tokensCompletion": 47,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_34",
+    "input": "Check git diff for security issues",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户要求检查git diff中的安全问题，属于代码审计任务，需要代理规划执行步骤\"}",
+    "latencyMs": 1532,
+    "tokensPrompt": 91,
+    "tokensCompletion": 49,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_35",
+    "input": "Hello",
+    "output": "{\n  \"intent\": \"small_talk\",\n  \"execution\": \"llm_direct\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户输入为简单问候，无代码或项目相关意图。\"\n}",
+    "latencyMs": 1404,
+    "tokensPrompt": 86,
+    "tokensCompletion": 51,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_36",
+    "input": "How does loop.ts work",
+    "output": "{\n  \"intent\": \"explain_project\",\n  \"execution\": \"agent_readonly\",\n  \"confidence\": 0.95,\n  \"reason\": \"User is asking how a specific file (loop.ts) works, which is a request for code explanation within ",
+    "latencyMs": 1654,
+    "tokensPrompt": 90,
+    "tokensCompletion": 61,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_37",
+    "input": "What does this project do",
+    "output": "{\n  \"intent\": \"explain_project\",\n  \"execution\": \"agent_readonly\",\n  \"confidence\": 0.95,\n  \"reason\": \"User is asking for a high-level description of the project's purpose.\"\n}",
+    "latencyMs": 1425,
+    "tokensPrompt": 90,
+    "tokensCompletion": 50,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_38",
+    "input": "Continue",
+    "output": "{\"intent\": \"unknown\", \"execution\": \"llm_direct\", \"confidence\": 0.3, \"reason\": \"用户输入'Continue'，意图不明确，可能是继续之前的对话或任务，但缺乏上下文，无法确定具体意图。\"}",
+    "latencyMs": 1612,
+    "tokensPrompt": 86,
+    "tokensCompletion": 56,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_39",
+    "input": "Where is this file located",
+    "output": "{\n  \"intent\": \"unknown\",\n  \"execution\": \"llm_direct\",\n  \"confidence\": 0.3,\n  \"reason\": \"The user asks about the location of a file but does not specify which file or provide enough context to determin",
+    "latencyMs": 1504,
+    "tokensPrompt": 90,
+    "tokensCompletion": 61,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_40",
+    "input": "Help me refactor this code",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户请求重构代码，属于代码任务，需要代理规划执行步骤。\"}",
+    "latencyMs": 1274,
+    "tokensPrompt": 91,
+    "tokensCompletion": 45,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_41",
+    "input": "Check for dead code",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_plan\", \"confidence\": 0.9, \"reason\": \"用户要求检查死代码，属于代码审计任务，需要代理规划执行静态分析。\"}",
+    "latencyMs": 1324,
+    "tokensPrompt": 89,
+    "tokensCompletion": 49,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_42",
+    "input": "Generate unit tests",
+    "output": "{\n  \"intent\": \"code_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户请求生成单元测试，属于代码生成任务，需要规划测试用例并生成代码。\"\n}",
+    "latencyMs": 1333,
+    "tokensPrompt": 88,
+    "tokensCompletion": 55,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_43",
+    "input": "Show git status",
+    "output": "{\n  \"intent\": \"command_help\",\n  \"execution\": \"local_action\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户请求执行git status命令，属于本地命令执行，意图为命令帮助或执行\"\n}",
+    "latencyMs": 1436,
+    "tokensPrompt": 88,
+    "tokensCompletion": 54,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_44",
+    "input": "Review my code",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_readonly\", \"confidence\": 0.9, \"reason\": \"用户请求审查代码，属于代码审计任务，需要只读分析。\"}",
+    "latencyMs": 1290,
+    "tokensPrompt": 88,
+    "tokensCompletion": 46,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_45",
+    "input": "Find security vulnerabilities",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"User explicitly requests security vulnerability analysis, which is a code audit task requiring agent planning to syst",
+    "latencyMs": 1514,
+    "tokensPrompt": 88,
+    "tokensCompletion": 56,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_46",
+    "input": "Exit",
+    "output": "{\"intent\": \"command_exit\", \"execution\": \"local_action\", \"confidence\": 1.0, \"reason\": \"用户输入'Exit'，明确表示退出意图。\"}",
+    "latencyMs": 1000,
+    "tokensPrompt": 86,
+    "tokensCompletion": 41,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_47",
+    "input": "How do I use this API",
+    "output": "{\n  \"intent\": \"command_help\",\n  \"execution\": \"llm_direct\",\n  \"confidence\": 0.95,\n  \"reason\": \"User is asking how to use the API, which is a help-oriented request.\"\n}",
+    "latencyMs": 996,
+    "tokensPrompt": 91,
+    "tokensCompletion": 53,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_48",
+    "input": "What's the performance like",
+    "output": "{\n  \"intent\": \"small_talk\",\n  \"execution\": \"llm_direct\",\n  \"confidence\": 0.85,\n  \"reason\": \"User is asking a general question about performance, likely seeking a conversational response rather than a ",
+    "latencyMs": 1404,
+    "tokensPrompt": 90,
+    "tokensCompletion": 60,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_49",
+    "input": "Are there dependency conflicts",
+    "output": "{\n  \"intent\": \"debug_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.85,\n  \"reason\": \"User is asking about dependency conflicts, which is a debugging task that requires planning and analysis.\"\n}",
+    "latencyMs": 1285,
+    "tokensPrompt": 89,
+    "tokensCompletion": 53,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_50",
+    "input": "I need help with TypeScript",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"agent_plan\", \"confidence\": 0.9, \"reason\": \"User explicitly requests help with TypeScript, indicating a coding task that may require planning and execution.\"}",
+    "latencyMs": 1168,
+    "tokensPrompt": 91,
+    "tokensCompletion": 49,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_51",
+    "input": "帮我check一下这个bug",
+    "output": "{\"intent\": \"debug_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户明确要求检查bug，属于调试任务，需要代理规划执行步骤。\"}",
+    "latencyMs": 993,
+    "tokensPrompt": 90,
+    "tokensCompletion": 46,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_52",
+    "input": "看下diff有什么改动",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_readonly\", \"confidence\": 0.9, \"reason\": \"用户要求查看diff改动，属于代码审查任务，需要只读分析\"}",
+    "latencyMs": 1555,
+    "tokensPrompt": 90,
+    "tokensCompletion": 46,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_53",
+    "input": "executor.ts里面有什么",
+    "output": "{\n  \"intent\": \"explain_project\",\n  \"execution\": \"agent_readonly\",\n  \"confidence\": 0.9,\n  \"reason\": \"用户询问特定文件内容，属于项目解释范畴，需要读取文件信息。\"\n}",
+    "latencyMs": 1395,
+    "tokensPrompt": 90,
+    "tokensCompletion": 53,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_54",
+    "input": "刚才讲的",
+    "output": "{\"intent\": \"small_talk\", \"execution\": \"llm_direct\", \"confidence\": 0.7, \"reason\": \"用户没有明确指定任务类型，仅提及‘刚才讲的’，可能是在延续对话或询问之前内容，属于闲聊范畴。\"}",
+    "latencyMs": 1477,
+    "tokensPrompt": 87,
+    "tokensCompletion": 58,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_55",
+    "input": "?",
+    "output": "{\"intent\": \"command_help\", \"execution\": \"llm_direct\", \"confidence\": 0.95, \"reason\": \"用户输入仅为问号，可能表示请求帮助或说明，符合command_help意图。\"}",
+    "latencyMs": 1517,
+    "tokensPrompt": 86,
+    "tokensCompletion": 51,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_56",
+    "input": "为什么报错了",
+    "output": "{\n  \"intent\": \"debug_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户询问报错原因，属于调试任务，需要分析错误信息并给出解决方案。\"\n}",
+    "latencyMs": 1321,
+    "tokensPrompt": 88,
+    "tokensCompletion": 54,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_57",
+    "input": "你支持哪些功能",
+    "output": "{\"intent\": \"command_help\", \"execution\": \"llm_direct\", \"confidence\": 1.0, \"reason\": \"用户询问支持的功能，属于命令帮助类问题。\"}",
+    "latencyMs": 1018,
+    "tokensPrompt": 89,
+    "tokensCompletion": 43,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_58",
+    "input": "怎么用dscode",
+    "output": "{\n  \"intent\": \"code_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户询问如何使用dscode，这是一个编程相关任务，需要规划执行步骤。\"\n}",
+    "latencyMs": 1459,
+    "tokensPrompt": 90,
+    "tokensCompletion": 53,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_59",
+    "input": "分析一下 ./src 目录",
+    "output": "{\n  \"intent\": \"explain_project\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.9,\n  \"reason\": \"用户请求分析src目录，属于项目结构或代码解释任务，需要agent规划执行\"\n}",
+    "latencyMs": 1684,
+    "tokensPrompt": 91,
+    "tokensCompletion": 55,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_60",
+    "input": "这个怎么修 TS2345",
+    "output": "{\n  \"intent\": \"debug_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.95,\n  \"reason\": \"用户询问如何修复TypeScript错误TS2345，这是一个明确的调试任务，需要分析代码上下文并提供修复方案。\"\n}",
+    "latencyMs": 1451,
+    "tokensPrompt": 91,
+    "tokensCompletion": 60,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_61",
+    "input": "帮我跑 pnpm test",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"local_action\", \"confidence\": 0.95, \"reason\": \"用户请求执行pnpm test命令，属于代码相关任务，需要本地执行\"}",
+    "latencyMs": 1352,
+    "tokensPrompt": 90,
+    "tokensCompletion": 45,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_62",
+    "input": "审查代码质量",
+    "output": "{\"intent\": \"audit_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户明确要求审查代码质量，属于代码审计任务，需要规划执行步骤\"}",
+    "latencyMs": 1334,
+    "tokensPrompt": 88,
+    "tokensCompletion": 47,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_63",
+    "input": "写个readme",
+    "output": "{\"intent\": \"code_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户要求编写README文件，属于代码生成任务，需要规划文件结构和内容。\"}",
+    "latencyMs": 1490,
+    "tokensPrompt": 89,
+    "tokensCompletion": 47,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_64",
+    "input": "这个项目用的是什么技术栈",
+    "output": "{\"intent\": \"explain_project\", \"execution\": \"agent_readonly\", \"confidence\": 0.9, \"reason\": \"用户询问项目技术栈，属于项目解释类意图，需要读取项目信息。\"}",
+    "latencyMs": 1296,
+    "tokensPrompt": 91,
+    "tokensCompletion": 48,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_65",
+    "input": "帮我找一个文件",
+    "output": "{\"intent\": \"command_help\", \"execution\": \"llm_direct\", \"confidence\": 0.7, \"reason\": \"用户请求查找文件，但未指定具体文件名或路径，可能需进一步澄清或提供帮助。\"}",
+    "latencyMs": 1615,
+    "tokensPrompt": 88,
+    "tokensCompletion": 53,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_66",
+    "input": "那个函数在哪个文件里",
+    "output": "{\"intent\": \"explain_project\", \"execution\": \"agent_readonly\", \"confidence\": 0.7, \"reason\": \"用户询问函数所在文件，属于项目结构解释，适合只读查询\"}",
+    "latencyMs": 1381,
+    "tokensPrompt": 91,
+    "tokensCompletion": 46,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_67",
+    "input": "对比一下两个方案",
+    "output": "{\"intent\": \"small_talk\", \"execution\": \"llm_direct\", \"confidence\": 0.6, \"reason\": \"用户请求对比方案，但未明确指定是代码、调试、审计或项目解释，属于一般性讨论。\"}",
+    "latencyMs": 1639,
+    "tokensPrompt": 89,
+    "tokensCompletion": 56,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_68",
+    "input": "帮我排查内存泄漏",
+    "output": "{\"intent\": \"debug_task\", \"execution\": \"agent_plan\", \"confidence\": 0.95, \"reason\": \"用户请求排查内存泄漏，属于调试任务，需要代理规划执行步骤。\"}",
+    "latencyMs": 1404,
+    "tokensPrompt": 89,
+    "tokensCompletion": 46,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_69",
+    "input": "我需要一个rest api",
+    "output": "{\n  \"intent\": \"code_task\",\n  \"execution\": \"agent_plan\",\n  \"confidence\": 0.9,\n  \"reason\": \"用户明确要求创建一个REST API，属于代码生成任务，需要规划并执行代码编写。\"\n}",
+    "latencyMs": 1485,
+    "tokensPrompt": 89,
+    "tokensCompletion": 56,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  },
+  {
+    "id": "router_70",
+    "input": "给我看git log",
+    "output": "{\"intent\": \"command_help\", \"execution\": \"local_action\", \"confidence\": 0.9, \"reason\": \"用户请求执行git log命令，属于本地命令行操作\"}",
+    "latencyMs": 1394,
+    "tokensPrompt": 89,
+    "tokensCompletion": 41,
+    "passed": true,
+    "checks": [
+      "valid_json",
+      "valid_intent",
+      "valid_execution"
+    ]
+  }
+]

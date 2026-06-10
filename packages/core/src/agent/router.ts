@@ -157,162 +157,32 @@ function commandRouter(input: string): RouteDecision | null {
   return { intent: cmd.intent, execution: 'local_action', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 1, reason: cmd.reason };
 }
 
+
 // ═══════════════════════════════════════
-// Heuristic Router — 仅高置信度开发任务
+// Heuristic Router — 最小安全网，意图分类交给 LLM Router
 // ═══════════════════════════════════════
 
-function heuristicRouter(input: string, ctx: RouterContext): RouteDecision | null {
-  const text = input.trim();
-
-  // 短追问（"讲一下"/"详细点"）有 conversationFocus → Agent 读取对应文件
-  if (ctx.conversationFocus?.file && /^(讲一下|详细|展开|说说|再讲|解释|具体|它是|怎么)/.test(text) && text.length <= 8) {
-    return {
-      intent: 'code_task', execution: 'agent_readonly',
-      target: { type: 'file', path: ctx.conversationFocus.file },
-      shouldScanProject: false,
-      allowedTools: ['read_file', 'read_file_range'],
-      needsClarification: false, confidence: 0.85,
-      reason: `短追问 → focus: ${ctx.conversationFocus.label}`,
-    };
+function heuristicRouter(text: string, ctx: RouterContext): RouteDecision | null {
+  // 短追问 → 读取 focus 文件
+  if (ctx.conversationFocus?.file && /^(讲一下|详细|展开|说说|再讲|解释|怎么)/.test(text) && text.length <= 8) {
+    return { intent: "code_task", execution: "agent_readonly", target: { type: "file", path: ctx.conversationFocus.file }, shouldScanProject: false, allowedTools: ["read_file", "read_file_range"], needsClarification: false, confidence: 0.85, reason: "短追问 → focus" };
   }
-
-  // 极短追问（"讲一下"/"继续"/"详细点"）有上下文时 → LLM 自然回答
-  if (ctx.lastAgentResult && text.length <= 5 && /^(讲一下|详细|继续|然后|接着|具体|说说|再讲|解释)/.test(text)) {
-    return { intent: 'conversation_summary', execution: 'llm_direct', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '短追问 + 有上下文 → LLM 直聊' };
+  // 纯寒暄
+  if (/^(你好|hi|hello|hey|哈喽|在吗)s*$/i.test(text)) {
+    return { intent: "small_talk", execution: "llm_direct", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.95, reason: "寒暄" };
   }
-
-  // context-aware: 纯寒暄（短输入 + 匹配列表）
-  if (/^(你好|hi|hello|hey|哈喽|在吗|早上好|下午好|晚上好)\s*$/i.test(text) && text.length < 10) {
-    return { intent: 'small_talk', execution: 'llm_direct', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.9, reason: '纯寒暄 → LLM 自然回答' };
-  }
-
-  // --- Target-aware 路由: URL / chat_history 由 Target Resolver 处理 ---
+  // Target 路由
   const target = resolveTarget(text, ctx);
-  if (target.type === 'url') {
-    // source=explicit → 首轮 → webpage_summary (概述)
-    // source=last_external_resource → 追问 → webpage_content_question / external_doc_question
-    const urlIntent = target.source === 'explicit'
-      ? (/安全|safe|check.*url|钓鱼/i.test(text) ? 'url_safety_check' as const : 'webpage_summary' as const)
-      : (/接入|怎么.*用|支持.*模型|api|base.*url/i.test(text) ? 'external_doc_question' as const : 'webpage_content_question' as const);
-    return applyTargetGuard({
-      intent: urlIntent,
-      execution: 'url_fetch_pipeline',
-      shouldScanProject: false,
-      allowedTools: [],
-      needsClarification: false,
-      confidence: 0.9,
-      reason: `目标=URL(${target.source}): ${target.url.slice(0, 50)}`,
-    }, target);
+  if (target.type === "url") {
+    return { intent: "webpage_summary", execution: "url_fetch_pipeline", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.9, reason: "URL" };
   }
-  // (chat_history 目标由后续会话回顾规则处理，此处不提前返回)
-
-  // project_component_question: "你现在的规划器是什么？"/"你的路由器是怎么实现的？"
-  if (/你.*(规划器|路由器|安全层|audit.*pipeline|记忆.*存在|Agent.*Loop|扫描器|prompt.*build)/i.test(text) && text.length > 6) {
-    return { intent: 'capability_question', execution: 'llm_direct', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.8, reason: '项目组件自我解释 → LLM 直聊' };
+  if (target.type === "git_diff") {
+    return { intent: "command_status", execution: "llm_direct", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.9, reason: "diff" };
   }
-
-  // capability_question: 能力询问 → llm_direct 自然回答
-  if (/你可以帮.*做|你能.*做|你能.*帮|可以做些什么|能做什么|有哪些功能|怎[么样]用|有哪些命令|介绍一下|你能干嘛|如何使用|使用教程|怎么使用|怎么用/i.test(text)) {
-    return { intent: 'capability_question', execution: 'llm_direct', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '能力询问 → LLM 自然回答' };
+  if (target.type === "chat_history" && ctx.lastAgentResult && /继续|然后再|接着/i.test(text)) {
+    return { intent: "continue_previous_task", execution: ctx.mode === "readonly" ? "agent_readonly" : "agent_plan", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.85, reason: "继续" };
   }
-
-  // 会话回顾（有 lastAgentResult 时）
-  if (ctx.lastAgentResult && /上面.*(聊|说|讲|分析|提)|刚才.*(说|分析|讲|提)|总结.*刚才|回顾|你.*(说|分析).*(拆分|怎么|具体|展开)|核实|验证.*发现|确认.*(发现|行数|数目|数量|文件)|核查|有多少|几个/i.test(text)) {
-    return { intent: 'conversation_summary', execution: 'llm_direct', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.9, reason: '会话回顾/核实 → LLM 直聊' };
-  }
-  // URL上下文追问："刚才分析的URL文档里..."
-  if (ctx.lastExternalResource && /刚才.*(URL|链接|网页|文档|分析)/i.test(text)) {
-    return applyTargetGuard({
-      intent: 'webpage_content_question', execution: 'url_fetch_pipeline', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.8,
-      reason: 'URL追问 → 继承lastExternalResource',
-    }, { type: 'url', url: ctx.lastExternalResource.url, source: 'last_external_resource' });
-  }
-
-  // 继续任务
-  if (ctx.pendingAction && /^(继续|按.*方案|执行|接着|go on|continue)\b/i.test(text)) {
-    return { intent: 'continue_previous_task', execution: 'agent_plan', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '继续任务 → pendingAction存在' };
-  }
-  if (!ctx.pendingAction && /^(继续|接着|go on|continue)\b/i.test(text) && text.length < 8) {
-    return { intent: 'continue_previous_task', execution: 'llm_direct', shouldScanProject: false, allowedTools: [], needsClarification: true, confidence: 0.5, reason: '继续？但无pendingAction' };
-  }
-  // ⚠️ 顺序关键：debug/code/test 必须在 explain_project 之前
-  // debug_task: 修复/排查/为什么+问题
-  if (hasPair(text, /修复|解决|排查|debug|fix|为什么|怎么.*(报错|失败)/i, /bug|报错|失败|错误|无法|不生效|跳转|构建|test|类型|type|解析|异常|慢/i) && text.length > 5) {
-    return { intent: 'debug_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '命中: debug_task' };
-  }
-  // debug_task: 检查特定函数/文件是否有问题（不触发 audit_task 全项目审查）
-  if (/(检查|审查|看看|查查).{0,30}(函数|方法|模块|文件|代码|安全边界|漏洞|死代码|引用|配置)/i.test(text) && text.length > 8 && !/项目|全项目|代码质量|架构/i.test(text)) {
-    return { intent: 'debug_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.8, reason: '命中: debug_task(定向检查)' };
-  }
-  // debug_task: 报错信息中包含 TS 错误码或文件:行号
-  if (/error\s+TS\d+|\.(ts|tsx):\d+:\d+|根据.*报错|定位.*文件|排查.*错误/i.test(text) && text.length > 15) {
-    return { intent: 'debug_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '命中: debug_task(错误定位)' };
-  }
-
-  // 简短 debug + English
-  if (/^(修复|fix|debug|排查)\s+\S+/i.test(text) || /fix\s+(a\s+)?(bug|error|issue)/i.test(text)) {
-    return { intent: 'debug_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.8, reason: '命中: debug_task(短)' };
-  }
-
-  // code_task: 开发动作 + 明确目标
-  if (hasPair(text, /新增|添加|创建|实现|重构|接入|增加|开发/i, /页面|功能|接口|组件|模块|CLI|路由|端点|endpoint|中间件|类型|包|文件|目录|配置/i)) {
-    return { intent: 'code_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '命中: code_task' };
-  }
-  // 代码修改类（单关键词 + 英文）
-  if (/修改.*(文件|配置|代码)|写.*(页面|组件|模块|接口|代码|注释)|给.*加.*(注释|功能)|optimize|refactor|implement|add\s+(a\s+)?new|add\s+user|add\s+api/i.test(text)) {
-    return { intent: 'code_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.8, reason: '命中: code_task(单关键词)' };
-  }
-
-  // debug_task: 运行验证命令
-  if (/运行\s+(pnpm|npm|yarn|npx)?\s*(typecheck|lint|build|test|vitest)/i.test(text)) {
-    return { intent: 'debug_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '命中: debug_task(运行验证)' };
-  }
-
-  // test_task
-  if (/写.*测试|编写.*测试|补充.*测试|单元测试|集成测试|vitest|coverage|run.*test|write.*test/i.test(text)) {
-    return { intent: 'test_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '命中: test_task' };
-  }
-
-  // git diff review: "检查 git diff", "diff 有什么问题", "看看改了哪些文件"
-  if (/(git\s+)?diff.*(检查|问题|有没有|怎么样|review|有问题|看了|看看)|检查.*(git\s+)?diff|看看.*(git\s+)?diff|diff.*check/i.test(text)) {
-    return { intent: 'command_status', execution: 'llm_direct', shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.85, reason: 'git diff 检查 → llm_direct' };
-  }
-
-  // audit_task: 检查/审查/审计 → verified audit pipeline
-  // 标准长度 (>8字)
-  if (hasPair(text, /检查|审查|审计|漏洞|安全|优化/i, /项目|代码|安全|质量|缺陷|架构|技术债/i) && text.length > 8) {
-    return { intent: 'audit_task', execution: 'agent_readonly', shouldScanProject: true, allowedTools: ['read_json_path', 'list_scripts', 'detect_cross_platform', 'file_exists', 'find_references', 'read_file', 'search_code'], needsClarification: false, confidence: 0.8, reason: '命中: audit_task → audit_pipeline' };
-  }
-  // 短但明确的安全/审计请求 (5-8字): "检查安全漏洞", "审查代码质量"
-  if (/^(检查|审查|审计)(安全漏洞|代码质量|代码规范|依赖安全|项目安全|项目质量)/.test(text) && text.length >= 5 && text.length <= 8) {
-    return { intent: 'audit_task', execution: 'agent_readonly', shouldScanProject: true, allowedTools: ['read_json_path', 'list_scripts', 'detect_cross_platform', 'file_exists', 'find_references', 'read_file', 'search_code'], needsClarification: false, confidence: 0.85, reason: '命中: audit_task → audit_pipeline' };
-  }
-
-  // explain_file: "讲一下 XXX.ts/XXX 是怎么工作的"
-  if (/(讲一下|说说|解释|展开)\s+(\S+\.(?:ts|tsx|js|json)|[a-zA-Z_]+\s*(?:函数|模块|类|组件|文件))/i.test(text) && text.length >= 5) {
-    return { intent: 'explain_project', execution: 'agent_readonly', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.8, reason: '命中: explain_file → 组件解释' };
-  }
-
-  // explain_project: 项目分析/检查/审查（最宽，放在最后）
-  // 单关键词强信号
-  if (/^(解释|分析|审查|检查|审计)\s*(这个|一下|项目|代码|文件|模块|依赖|配置)/i.test(text) && text.length >= 5) {
-    return { intent: 'explain_project', execution: 'agent_readonly', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '命中: explain_project(强)' };
-  }
-  // explain + English
-  if (/^explain\s+(this|the|project|code|file)/i.test(text)) {
-    return { intent: 'explain_project', execution: 'agent_readonly', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '命中: explain_project(EN)' };
-  }
-  // 双关键词（扩展目标组覆盖更多对象词）
-  if (hasPair(text, /解释|分析|看看|了解|梳理|检查|审查|审计|缺陷|漏洞|安全|优化/i, /项目|架构|结构|代码|repo|模块|依赖|配置|质量|这个|文件|干嘛|做|什么|作用|安全|性能/i) && text.length >= 6) {
-    const depth = /全面|深入|完整|详细|deep/i.test(text) ? 'deep' : /解释|分析|架构|结构/i.test(text) ? 'standard' : 'overview';
-    return { intent: 'explain_project', execution: 'agent_readonly', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.8, reason: `命中: explain_project (${depth})`, analysisDepth: depth };
-  }
-
-  return null; // fallback to LLM Router
-}
-
-function hasPair(text: string, a: RegExp, b: RegExp): boolean {
-  return a.test(text) && b.test(text);
+  return null;
 }
 
 // ═══════════════════════════════════════
@@ -366,7 +236,11 @@ export async function llmRouter(
       `\n上下文: ${prompt}\n\n输出JSON:`,
     );
 
-    const parsed = JSON.parse(raw);
+    // JSON 容错: 提取 markdown 代码块, 处理 Flash 非纯JSON输出
+    let jsonStr = raw;
+    const mdMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+    if (mdMatch) jsonStr = mdMatch[1].trim();
+    const parsed = JSON.parse(jsonStr);
     return {
       intent: parsed.intent ?? 'unknown',
       execution: parsed.execution ?? 'local_action',
@@ -385,12 +259,12 @@ export async function llmRouter(
 function fallbackClarification(input: string): RouteDecision {
   return {
     intent: 'unknown',
-    execution: 'llm_direct',  // 走自然对话澄清，绝不 local_action
-    shouldScanProject: false,
+    execution: 'agent_readonly',  // 默认进 Agent——有工具总比没工具好
+    shouldScanProject: true,
     allowedTools: [],
-    needsClarification: true,
-    confidence: 0.2,
-    reason: `LLM Router 降级: ${input.slice(0, 30)}`,
+    needsClarification: false,
+    confidence: 0.3,
+    reason: `LLM Router 不可用 → agent_readonly`,
   };
 }
 
