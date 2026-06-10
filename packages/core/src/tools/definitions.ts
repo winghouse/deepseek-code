@@ -77,6 +77,26 @@ export const READ_ONLY_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    name: 'read_file_batch',
+    description:
+      '批量读取多个文件，支持 DeepSeek V4 1M 上下文。一次性加载多个相关文件的完整内容，用于跨文件分析和全项目审查。每个文件返回前 200 行。最多 20 个文件。',
+    parameters: {
+      type: 'object',
+      properties: {
+        filePaths: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '要读取的文件路径列表',
+        },
+        maxLinesPerFile: {
+          type: 'number',
+          description: '每个文件最多读取行数，默认 200',
+        },
+      },
+      required: ['filePaths'],
+    },
+  },
+  {
     name: 'search_code',
     description:
       '使用 ripgrep 在项目中搜索代码。支持正则表达式，可以指定文件类型过滤。返回匹配的文件路径和行内容。',

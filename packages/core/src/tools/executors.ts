@@ -56,6 +56,10 @@ export interface ToolExecutors {
     startLine?: number;
     endLine?: number;
   }) => Promise<ToolExecutionResult>;
+  readFileBatch: (args: {
+    filePaths: string[];
+    maxLinesPerFile?: number;
+  }) => Promise<ToolExecutionResult>;
   searchCode: (args: {
     pattern: string;
     fileTypes?: string;
@@ -206,6 +210,38 @@ export function createToolExecutors(ctx: ToolContext): ToolExecutors {
       } catch (e) {
         return { success: false, content: '', error: String(e) };
       }
+    },
+
+    // DeepSeek V4 1M 上下文：批量读取文件，一次加载多个文件
+    async readFileBatch({ filePaths, maxLinesPerFile = 200 }) {
+      const results: string[] = [];
+      const errors: string[] = [];
+      const files = filePaths.slice(0, 20); // 最多 20 个文件
+
+      for (const fp of files) {
+        try {
+          const fullPath = resolveSafe(fp);
+          if (!fs.existsSync(fullPath)) { errors.push(`${fp}: 不存在`); continue; }
+          if (isSensitiveFile(fp)) { results.push(`[敏感文件] ${fp}`); continue; }
+          const lines = fs.readFileSync(fullPath, 'utf-8').split('\n');
+          const preview = lines.slice(0, maxLinesPerFile);
+          const ctx = `### ${fp} (${preview.length}/${lines.length} 行)\n\`\`\`\n${preview.join('\n')}\n\`\`\``;
+          results.push(ctx);
+        } catch (e) {
+          errors.push(`${fp}: ${String(e)}`);
+        }
+      }
+
+      const summary = results.length > 0
+        ? `📦 批量读取 ${results.length} 个文件 (${maxLinesPerFile} 行/文件, DeepSeek V4 1M 上下文):\n\n` + results.join('\n\n')
+        : '';
+      const errPart = errors.length > 0 ? `\n\n⚠️ ${errors.length} 个文件读取失败:\n${errors.join('\n')}` : '';
+
+      return {
+        success: results.length > 0,
+        content: summary + errPart,
+        metadata: { filesRead: results.length, filesFailed: errors.length, totalLines: results.reduce((s, r) => s + (r.split('\n').length || 0), 0) },
+      };
     },
 
     async searchCode({ pattern, fileTypes, directory, caseSensitive = false, maxResults = 50 }) {
@@ -691,6 +727,10 @@ async function executeToolInternal(
     case 'read_file_range':
       return executors.readFile(
         args as { filePath: string; startLine?: number; endLine?: number },
+      );
+    case 'read_file_batch':
+      return executors.readFileBatch(
+        args as { filePaths: string[]; maxLinesPerFile?: number },
       );
     case 'search_code':
       return executors.searchCode(

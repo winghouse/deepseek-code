@@ -145,6 +145,8 @@ export interface InteractiveSessionState {
   /** 最近访问的外部资源历史 */
   recentExternalResources: ExternalResource[];
   chatHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  /** 长对话压缩摘要 (V4 智能摘要) */
+  chatSummaries?: string[];
   updatedAt: string;
 }
 

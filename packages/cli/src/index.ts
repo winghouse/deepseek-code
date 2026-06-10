@@ -120,7 +120,7 @@ program
         if (route.execution === 'llm_direct_limited') {
           console.log('⚠️ 当前 CLI 不能直接读取网页内容。请粘贴网页文本，或启用 web_fetch 工具。\n');
         }
-        await handleLlmDirect(task, config, apiKey, baseUrl);
+        await handleLlmDirect(task, config, apiKey, baseUrl, undefined, undefined, []);
         return;
       }
     }
@@ -654,6 +654,38 @@ async function interactiveMode(
   const prevState = loadInteractiveState(workingDir);
   const CHAT_HISTORY_MAX = 100;  // 保留最近 100 条（约 50 轮对话）
   let chatHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = ((prevState?.chatHistory ?? []) as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>).slice(-CHAT_HISTORY_MAX);
+  let chatSummaries: string[] = prevState?.chatSummaries ?? [];
+
+  /** 每 10 轮对话用 Flash 生成摘要，保持上下文不丢失 */
+  async function summarizeAndCompress() {
+    if (chatHistory.length < 20) return; // 至少 10 轮对话才压缩
+    const recent = chatHistory.slice(-10); // 保留最近 5 轮
+    const toSummarize = chatHistory.slice(0, -10); // 待压缩的早期对话
+    if (toSummarize.length < 10) return;
+
+    try {
+      const text = toSummarize.map((m) => `${m.role}: ${m.content.slice(0, 100)}`).join('\n');
+      const prompt = `用 100 字中文总结这段对话的核心内容和结论，不要编造：\n${text.slice(0, 2000)}`;
+      const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: MODEL_FLASH, messages: [{ role: 'user', content: prompt }], max_tokens: 200, temperature: 0.1 }),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        const summary = data.choices?.[0]?.message?.content?.trim();
+        if (summary) {
+          chatSummaries.push(`[早期对话] ${summary}`);
+          chatHistory = recent; // 压缩：只保留最近 10 条 + 摘要
+        }
+      }
+    } catch {
+      // 摘要失败不影响对话
+    }
+    // 防止摘要无限增长
+    if (chatSummaries.length > 10) chatSummaries = chatSummaries.slice(-10);
+  }
   let lastAgentResult: import('deepseek-code-core').LastAgentResult | null = prevState?.lastAgentResult
     ? { ...prevState.lastAgentResult, intent: prevState.lastAgentResult.intent as import('deepseek-code-shared').UserIntent, execution: prevState.lastAgentResult.execution as import('deepseek-code-shared').ExecutionMode, filesRead: prevState.lastAgentResult.filesRead ?? [], toolsUsed: prevState.lastAgentResult.toolsUsed ?? [], findings: prevState.lastAgentResult.findings ?? [], nextSuggestions: [] }
     : null;
@@ -686,6 +718,8 @@ async function interactiveMode(
   function pushHistory(msg: { role: 'user' | 'assistant' | 'system'; content: string }) {
     chatHistory.push(msg);
     if (chatHistory.length > CHAT_HISTORY_MAX) chatHistory = chatHistory.slice(-CHAT_HISTORY_MAX);
+    // 异步压缩，不阻塞
+    if (chatHistory.length >= 20 && chatHistory.length % 10 === 0) summarizeAndCompress();
   }
 
   /** 持久化当前交互会话状态 */
@@ -714,6 +748,7 @@ async function interactiveMode(
         : prevState?.lastExternalResource,
       recentExternalResources: prevState?.recentExternalResources ?? [],
       chatHistory,
+      chatSummaries,
       updatedAt: new Date().toISOString(),
     });
   }
@@ -914,7 +949,7 @@ async function interactiveMode(
       return;
     }
     if (route.execution !== 'agent_readonly' && route.execution !== 'agent_plan' && route.execution !== 'agent_execute') {
-      chatHistory = await handleLlmDirect(input, config, apiKey, baseUrl, chatHistory, lastAgentResult);
+      chatHistory = await handleLlmDirect(input, config, apiKey, baseUrl, chatHistory, lastAgentResult, chatSummaries);
       persistState();
       rl.prompt();
       return;
@@ -1206,6 +1241,7 @@ async function handleLlmDirect(
   baseUrl: string,
   history?: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
   agentResult?: import('deepseek-code-core').LastAgentResult | null,
+  summaries?: string[],
 ): Promise<Array<{ role: 'user' | 'assistant' | 'system'; content: string }>> {
   console.log('');
   const model: string = (config.defaultModel === 'auto' || config.defaultModel === MODEL_PRO) ? MODEL_FLASH : config.defaultModel;
@@ -1231,6 +1267,7 @@ async function handleLlmDirect(
 
   const messages = [
     { role: 'system' as const, content: `你是 DeepSeek Code CLI 的 AI 助手。\n${facts}\n用自然友好的语气回答。\n\n约束：不能声称会读取文件、执行命令或调用工具。不能输出 \`\`\`tool 代码块。不能假装你执行了什么操作。如果你需要读取项目文件，请让用户确认是否进入 Agent 模式。` },
+    ...(summaries ?? []).map((s) => ({ role: 'system' as const, content: s })),
     ...olderSummary,
     ...recent,
     ...taskContext,
