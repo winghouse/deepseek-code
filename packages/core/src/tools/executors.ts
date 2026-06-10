@@ -509,8 +509,8 @@ export function createToolExecutors(ctx: ToolContext): ToolExecutors {
     },
 
     async runCmd({ executable, args: cmdArgs, cwd, reason: _reason }) {
-      // 安全白名单：移除 node/npx（可执行任意代码）
-      const SAFE_EXECUTABLES = new Set(['pnpm', 'npm', 'git', 'tsc', 'vitest', 'yarn']);
+      // 安全白名单。node/npx 已加回——三模式权限系统（plan/edit/auto）在上层做门控
+      const SAFE_EXECUTABLES = new Set(['pnpm', 'npm', 'git', 'tsc', 'vitest', 'yarn', 'node', 'npx']);
       if (!SAFE_EXECUTABLES.has(executable)) {
         return { success: false, content: `❌ 不可执行: ${executable}。允许: ${[...SAFE_EXECUTABLES].join(', ')}`, error: 'UNSAFE_EXECUTABLE' };
       }
