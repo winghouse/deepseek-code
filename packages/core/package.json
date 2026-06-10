@@ -1,6 +1,6 @@
 {
   "name": "deepseek-code-core",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "DeepSeek Code Agent Runtime 核心",
   "license": "MIT",
   "repository": {
@@ -15,7 +15,9 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist/"],
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
