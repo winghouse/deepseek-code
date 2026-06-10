@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { MODEL_PRO } from 'deepseek-code-shared';
 import { InMemoryStore, FileMemoryStore, createStep } from '../src/context/memory.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -10,7 +11,7 @@ function createTestSession(id: string): Session {
     id,
     createdAt: new Date(),
     taskDescription: '测试任务',
-    modelName: 'deepseek-v4-pro',
+    modelName: MODEL_PRO,
     workingDir: '/test',
     steps: [],
     completed: false,
@@ -82,7 +83,7 @@ describe('FileMemoryStore', () => {
 
     const loaded = await store.loadSession('file-test-2');
     expect(loaded).not.toBeNull();
-    expect(loaded!.modelName).toBe('deepseek-v4-pro');
+    expect(loaded!.modelName).toBe(MODEL_PRO);
   });
 
   it('列出文件会话', async () => {

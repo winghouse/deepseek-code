@@ -3,7 +3,7 @@
 // ============================================================
 
 import type { ModelName } from 'deepseek-code-shared';
-import { estimateTaskComplexity, recommendModel } from 'deepseek-code-shared';
+import { estimateTaskComplexity, recommendModel , MODEL_PRO, MODEL_FLASH} from 'deepseek-code-shared';
 import type { DeepSeekConfig } from './types.js';
 import { DeepSeekClient } from './deepseek.js';
 
@@ -47,16 +47,16 @@ export class ModelRouter {
       ...routerConfig.upgradeThresholds,
     };
 
-    this.proClient = new DeepSeekClient('deepseek-v4-pro', this.config);
-    this.flashClient = new DeepSeekClient('deepseek-v4-flash', this.config);
+    this.proClient = new DeepSeekClient(MODEL_PRO, this.config);
+    this.flashClient = new DeepSeekClient(MODEL_FLASH, this.config);
   }
 
   /**
    * 根据任务描述选择模型
    */
   selectModel(taskDescription: string): ModelName {
-    if (this.strategy === 'pro') return 'deepseek-v4-pro';
-    if (this.strategy === 'flash') return 'deepseek-v4-flash';
+    if (this.strategy === 'pro') return MODEL_PRO;
+    if (this.strategy === 'flash') return MODEL_FLASH;
 
     // auto 模式
     const complexity = estimateTaskComplexity(taskDescription);
@@ -67,7 +67,7 @@ export class ModelRouter {
    * 获取客户端
    */
   getClient(modelName: ModelName): DeepSeekClient {
-    return modelName === 'deepseek-v4-pro' ? this.proClient : this.flashClient;
+    return modelName === MODEL_PRO ? this.proClient : this.flashClient;
   }
 
   /**

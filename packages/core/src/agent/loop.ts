@@ -3,7 +3,7 @@
 // ============================================================
 
 import type { ChatMessage, Session, AgentStep, ToolCall, ExecutionPlan, ToolExecutionResult } from 'deepseek-code-shared';
-import { canTransitionPhase, fileFingerprint } from 'deepseek-code-shared';
+import { canTransitionPhase, fileFingerprint, MODEL_PRO, MODEL_FLASH } from 'deepseek-code-shared';
 import type { AgentPhase } from 'deepseek-code-shared';
 import { generateSessionId, estimateTaskComplexity, recommendModel } from 'deepseek-code-shared';
 import type { ModelClient } from '../model/types.js';
@@ -84,7 +84,7 @@ export async function runAgentLoop(
       return { session: loaded, success: false, summary: `工作目录不匹配`, error: 'dir_mismatch' };
     }
 
-    const resumeModel = router.getClient(loaded.modelName as 'deepseek-v4-pro' | 'deepseek-v4-flash');
+    const resumeModel = router.getClient(loaded.modelName as typeof MODEL_PRO | typeof MODEL_FLASH);
     const availableTools = readOnly ? READ_ONLY_TOOLS : [...READ_ONLY_TOOLS, ...WRITE_TOOLS];
 
     if (loaded.interruptionReason) console.log(`💡 中断原因: ${loaded.interruptionReason}`);

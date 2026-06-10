@@ -255,7 +255,7 @@ function heuristicRouter(input: string, ctx: RouterContext): RouteDecision | nul
   }
 
   // code_task: 开发动作 + 明确目标
-  if (hasPair(text, /新增|添加|创建|实现|重构|接入|增加|开发/i, /页面|功能|接口|组件|模块|CLI|路由|端点|endpoint|中间件|类型|包/i)) {
+  if (hasPair(text, /新增|添加|创建|实现|重构|接入|增加|开发/i, /页面|功能|接口|组件|模块|CLI|路由|端点|endpoint|中间件|类型|包|文件|目录|配置/i)) {
     return { intent: 'code_task', execution: 'agent_plan', shouldScanProject: true, allowedTools: [], needsClarification: false, confidence: 0.85, reason: '命中: code_task' };
   }
   // 代码修改类（单关键词 + 英文）

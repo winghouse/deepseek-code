@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { ChatMessage, ExecutionPlan, RepoInfo, PlanStep } from 'deepseek-code-shared';
+import { MODEL_PRO, MODEL_FLASH } from 'deepseek-code-shared';
 import type { ModelClient } from '../model/types.js';
 
 function buildPlanPrompt(task: string, mode?: string): string {
@@ -22,7 +23,7 @@ function buildPlanPrompt(task: string, mode?: string): string {
       `{"order":4,"action":"read","description":"审查错误处理和边界情况","targetFiles":["packages/core/src/tools/executors.ts"]},` +
       `{"order":5,"action":"read","description":"审查最近修改的模块","targetFiles":["<从 git diff 找到的文件>"]},` +
       `{"order":6,"action":"verify","description":"逐条验证前几步的发现：用 read_file_range 确认关键证据的文件:行号，用 glob 验证涉及的文件是否存在，用 search_code 确认引用关系"}],` +
-      `"complexity":"medium","recommendedModel":"deepseek-v4-pro"}\n` +
+      `"complexity":"medium","recommendedModel":MODEL_PRO}\n` +
       `铁律（违反会导致幻觉）：\n` +
       `- 说"缺少X"前，必须先用 glob X 或 search_code X 确认真的没有\n` +
       `- 说"X行/个/次"等数值前，必须先用 read_file 或 search_code 确认实际数字\n` +
@@ -292,10 +293,10 @@ function validateComplexity(v: unknown): ExecutionPlan['complexity'] {
 }
 
 function validateModel(v: unknown): ExecutionPlan['recommendedModel'] {
-  if (typeof v === 'string' && ['deepseek-v4-flash', 'deepseek-v4-pro'].includes(v)) {
+  if (typeof v === 'string' && ([MODEL_FLASH, MODEL_PRO] as string[]).includes(v)) {
     return v as ExecutionPlan['recommendedModel'];
   }
-  return 'deepseek-v4-pro';
+  return MODEL_PRO;
 }
 
 /**
@@ -331,7 +332,7 @@ function buildFallbackPlan(taskDescription: string, repo: RepoInfo | null): Exec
   return {
     taskDescription,
     complexity: 'medium',
-    recommendedModel: 'deepseek-v4-pro',
+    recommendedModel: MODEL_PRO,
     steps,
     estimatedFiles: [...(repo?.structure.entryFiles ?? []), ...(repo?.structure.routeFiles ?? [])],
     risks: ['需要进一步确认改动范围'],

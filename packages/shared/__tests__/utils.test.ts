@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { estimateTaskComplexity, recommendModel, generateSessionId, isSensitiveFile, truncate, routeInput } from '../src/utils.js';
+import { MODEL_PRO, MODEL_FLASH } from '../src/types.js';
+import { estimateTaskComplexity, recommendModel, generateSessionId, isSensitiveFile, truncate } from '../src/utils.js';
 
 describe('estimateTaskComplexity', () => {
   it('简单任务返回 simple', () => {
@@ -23,12 +24,12 @@ describe('estimateTaskComplexity', () => {
 
 describe('recommendModel', () => {
   it('简单任务推荐 flash', () => {
-    expect(recommendModel('simple')).toBe('deepseek-v4-flash');
+    expect(recommendModel('simple')).toBe(MODEL_FLASH);
   });
 
   it('中等和复杂任务推荐 pro', () => {
-    expect(recommendModel('medium')).toBe('deepseek-v4-pro');
-    expect(recommendModel('complex')).toBe('deepseek-v4-pro');
+    expect(recommendModel('medium')).toBe(MODEL_PRO);
+    expect(recommendModel('complex')).toBe(MODEL_PRO);
   });
 });
 

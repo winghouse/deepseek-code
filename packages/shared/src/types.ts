@@ -5,7 +5,11 @@
 // ---- 模型相关 ----
 
 /** 支持的模型 */
-export type ModelName = 'deepseek-v4-pro' | 'deepseek-v4-flash' | 'auto';
+export type ModelName = typeof MODEL_PRO | typeof MODEL_FLASH | 'auto';
+
+/** 模型名常量——避免硬编码，升级 V5 时只改这里 */
+export const MODEL_PRO = 'deepseek-v4-pro' as const;
+export const MODEL_FLASH = 'deepseek-v4-flash' as const;
 
 /** 模型路由策略 */
 export type ModelRoutingStrategy = 'auto' | 'pro' | 'flash';

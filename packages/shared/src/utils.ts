@@ -2,6 +2,8 @@
 // DeepSeek Code — 共享工具函数
 // ============================================================
 
+import { MODEL_PRO, MODEL_FLASH } from './types.js';
+
 /**
  * 判断任务复杂度
  * 简单任务 → flash，复杂任务 → pro
@@ -30,8 +32,8 @@ export function estimateTaskComplexity(task: string): 'simple' | 'medium' | 'com
 /**
  * 根据复杂度决定推荐模型
  */
-export function recommendModel(complexity: 'simple' | 'medium' | 'complex'): 'deepseek-v4-flash' | 'deepseek-v4-pro' {
-  return complexity === 'simple' ? 'deepseek-v4-flash' : 'deepseek-v4-pro';
+export function recommendModel(complexity: 'simple' | 'medium' | 'complex'): typeof MODEL_FLASH | typeof MODEL_PRO {
+  return complexity === 'simple' ? MODEL_FLASH : MODEL_PRO;
 }
 
 /**

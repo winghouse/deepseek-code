@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import { runAgentLoop, continueLoop, ModelRouter, createToolExecutors, FileMemoryStore, PermissionManager, createDefaultPermissionConfig, filterSecrets, READ_ONLY_TOOLS, WRITE_TOOLS, scanRepo, buildRepoSummary, saveInteractiveState, loadInteractiveState, clearInteractiveState, buildLastAgentResult } from 'deepseek-code-core';
 import { routeInput } from 'deepseek-code-core';
 import type { RouteDecision, AuditFinding } from 'deepseek-code-shared';
+import { MODEL_PRO, MODEL_FLASH } from 'deepseek-code-shared';
 import type { LastAgentResult, InteractiveSessionState } from 'deepseek-code-core';
 import type { ModelRouterConfig } from 'deepseek-code-core';
 import type { DeepSeekCodeConfig, PermissionRequest } from 'deepseek-code-shared';
@@ -261,7 +262,7 @@ program
         const res = await fetch(`${baseUrl}/v1/chat/completions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'user', content: prompt }], temperature: 0.1, stream: false }),
+          body: JSON.stringify({ model: MODEL_FLASH, messages: [{ role: 'user', content: prompt }], temperature: 0.1, stream: false }),
         });
         const data = await res.json() as Record<string, unknown>;
         return ((data.choices as Array<{ message: { content: string } }>)?.[0]?.message?.content) ?? '';
@@ -339,7 +340,7 @@ program
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({
-              model: 'deepseek-v4-flash', messages: [
+              model: MODEL_FLASH, messages: [
                 { role: 'system', content: '只输出 JSON，不要 Markdown。' },
                 { role: 'user', content: prompt },
               ], max_tokens: 256, temperature: 0, stream: false,
@@ -634,6 +635,7 @@ async function interactiveMode(
   console.log('  /diff     - 查看 Git diff');
   console.log('  /status   - 查看 Git 状态');
   console.log('  /sessions - 查看历史会话');
+  console.log('  /write    - 切换读写模式');
   console.log('  /new      - 开始新会话');
   console.log('  /exit     - 退出');
   console.log('');
@@ -764,6 +766,13 @@ async function interactiveMode(
       rl.prompt();
       return;
     }
+    if (input === '/write' || input === 'write') {
+      readOnly = !readOnly;
+      sharedMessages = null; // 切换模式清上下文
+      console.log(`🔓 已切换为 ${readOnly ? '只读' : '读写'} 模式。${readOnly ? '写操作将被拦截。' : '我可以创建/修改文件了。'}`);
+      rl.prompt();
+      return;
+    }
     if (input === '/new') {
       sharedMessages = null;
       chatHistory = [];
@@ -796,10 +805,12 @@ async function interactiveMode(
       console.log(`
 可用命令：
   /help     - 显示此帮助
+  /write    - 切换读写模式 (默认只读)
   /exit     - 退出
   /diff     - 查看 Git diff
   /status   - 查看 Git 状态
   /sessions - 查看历史会话
+  /new      - 开始新会话
   其他内容   - 作为任务描述执行
 `);
       rl.prompt();
@@ -819,6 +830,19 @@ async function interactiveMode(
       }
       rl.prompt();
       return;
+    }
+
+    // 自动检测写操作需求
+    const writeKeywords = /创建|写入|修改.*文件|删除.*文件|生成.*文件|新建.*文件|重构|安装.*依赖/i;
+    if (readOnly && writeKeywords.test(input)) {
+      console.log(`\n⚠️  这个任务可能需要写文件，当前为只读模式`);
+      console.log('   输入 y 切换为读写模式执行，或直接回车保持只读分析：');
+      const answer = await new Promise<string>((resolve) => rl.question('   > ', resolve));
+      if (answer.trim().toLowerCase() === 'y') {
+        readOnly = false;
+        sharedMessages = null;
+        console.log('🔓 已切换为读写模式\n');
+      }
     }
 
     // 意图分流
@@ -1007,7 +1031,7 @@ async function runChatTurn(
     id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date(),
     taskDescription: input.slice(0, 80),
-    modelName: model.modelName as 'deepseek-v4-pro',
+    modelName: model.modelName as typeof MODEL_PRO,
     workingDir,
     steps: [],
     completed: false,
@@ -1049,7 +1073,7 @@ function createLLMRouterClient(apiKey: string, baseUrl: string): import('deepsee
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({
-              model: 'deepseek-v4-flash',
+              model: MODEL_FLASH,
               messages: [
                 { role: 'system', content: '你只输出 JSON，不要 Markdown，不要解释。' },
                 { role: 'user', content: prompt },
@@ -1091,7 +1115,7 @@ function createFlashChatClient(apiKey: string, baseUrl: string): { chat(prompt: 
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: 'deepseek-v4-flash',
+          model: MODEL_FLASH,
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 1024,
           temperature: 0.1,
@@ -1111,7 +1135,7 @@ function createProClient(apiKey: string, baseUrl: string): { chat(prompt: string
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
-          model: 'deepseek-v4-pro',
+          model: MODEL_PRO,
           messages: [
             { role: 'system', content: '你是一个资深软件工程师，擅长 TypeScript、Node.js 和代码调试。' },
             { role: 'user', content: prompt },
@@ -1184,7 +1208,7 @@ async function handleLlmDirect(
   agentResult?: import('deepseek-code-core').LastAgentResult | null,
 ): Promise<Array<{ role: 'user' | 'assistant' | 'system'; content: string }>> {
   console.log('');
-  const model: string = (config.defaultModel === 'auto' || config.defaultModel === 'deepseek-v4-pro') ? 'deepseek-v4-flash' : config.defaultModel;
+  const model: string = (config.defaultModel === 'auto' || config.defaultModel === MODEL_PRO) ? MODEL_FLASH : config.defaultModel;
 
   // 运行时事实——不依赖聊天记忆
   const facts = [
