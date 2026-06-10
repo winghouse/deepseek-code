@@ -178,12 +178,17 @@ program
 // Git Diff 查看
 program
   .command('diff')
-  .description('查看当前 Git 改动')
+  .description('查看当前 Git 改动 (彩色输出)')
   .action(async () => {
     const { createToolExecutors } = await import('deepseek-code-core');
     const tools = createToolExecutors({ workingDir: process.cwd() });
     const result = await tools.gitDiff({});
-    console.log(result.content);
+    // 彩色着色：+红 -绿 @@青
+    const colored = result.content
+      .replace(/^(\+.*)/gm, '\x1b[32m$1\x1b[0m')
+      .replace(/^(-.*)/gm, '\x1b[31m$1\x1b[0m')
+      .replace(/^(@@.*@@)/gm, '\x1b[36m$1\x1b[0m');
+    console.log(colored || '工作区干净');
   });
 
 // 初始化项目规则
@@ -499,38 +504,32 @@ program
 
 // Session 管理
 program
-  .command('sessions [action]')
-  .description('管理历史会话 (list / show <id> / resume <id>)')
-  .action(async (action: string | undefined) => {
+  .command('sessions [action] [target]')
+  .description('管理历史会话 (list / show <id> / delete <id> / delete-all)')
+  .action(async (action: string | undefined, target: string | undefined) => {
     const memory = new FileMemoryStore(process.cwd());
     if (!action || action === 'list') {
       const sessions = await memory.listSessions();
-      if (sessions.length === 0) {
-        console.log('📝 暂无历史会话');
-        return;
-      }
+      if (sessions.length === 0) { console.log('📝 暂无历史会话'); return; }
       console.log(`📝 共 ${sessions.length} 个会话:\n`);
       for (const s of sessions.slice(0, 20)) {
         const date = new Date(s.createdAt).toLocaleString('zh-CN');
         const icon = s.completed ? '✅' : '⏳';
-        console.log(`  ${icon} [${s.id}]`);
-        console.log(`     ${date}  ${s.taskDescription.slice(0, 60)}`);
+        console.log(`  ${icon} [${s.id.slice(0, 20)}]`);
+        console.log(`     ${date}  ${s.taskDescription.slice(0, 50)}`);
         console.log('');
       }
-    } else if (action === 'show') {
-      console.log('用法: dscode sessions show <session-id>');
-    } else if (action === 'resume') {
-      console.log('用法: dscode sessions resume <session-id>');
-    } else {
-      // 可能是 show <id> 或 resume <id>，但 commander 会把第一个参数当 action
-      // 这里做不了，需要子命令嵌套
-      const id = action;
-      const session = await memory.loadSession(id);
-      if (!session) {
-        console.log(`会话 ${id} 不存在`);
-        return;
-      }
-      showSession(session);
+    } else if (action === 'delete' && target) {
+      await memory.deleteSession(target);
+      console.log(`🗑️  已删除: ${target.slice(0, 20)}`);
+    } else if (action === 'delete-all') {
+      const sessions = await memory.listSessions();
+      for (const s of sessions) await memory.deleteSession(s.id);
+      console.log(`🗑️  已删除全部 ${sessions.length} 个会话`);
+    } else if (action === 'show' && target) {
+      const s = await memory.loadSession(target);
+      if (!s) { console.log(`会话 ${target.slice(0, 20)} 不存在`); return; }
+      console.log(`📋 ${s.id}\n任务: ${s.taskDescription}\n时间: ${new Date(s.createdAt).toLocaleString('zh-CN')}\n步骤: ${s.steps.length}\n状态: ${s.completed ? '✅' : '⏳'}`);
     }
   });
 
