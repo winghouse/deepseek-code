@@ -64,6 +64,22 @@ const tasks: LiveE2ECase[] = [
     mode: 'readonly',
     assertions: { mustNotTimeout: true, maxTimeMs: 30000, mustNotBeEmpty: true },
   },
+
+  // ═══ V4 特性验证 ═══
+  {
+    id: 'live-v4-01',
+    input: '读取 packages/core/src/tools/executors.ts 和 packages/core/src/agent/router.ts 这两个文件，分析它们之间的依赖关系',
+    mode: 'readonly',
+    expectedExecution: 'agent_readonly',
+    assertions: { mustNotTimeout: true, maxTimeMs: 90000, mustUseTools: ['read_file_batch', 'read_file'], mustNotBeEmpty: true },
+  },
+  {
+    id: 'live-v4-02',
+    input: '修复 packages/core/src/agent/router.ts 的 TS2345 类型错误',
+    mode: 'readonly',
+    expectedIntent: 'debug_task',
+    assertions: { mustNotTimeout: true, maxTimeMs: 120000, mustUseTools: ['read_file'], mustNotBeEmpty: true },
+  },
 ];
 
 const resultsPath = path.join(__dirname, 'baselines', 'live-e2e-results.jsonl');

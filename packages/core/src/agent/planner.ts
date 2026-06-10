@@ -31,8 +31,17 @@ function buildPlanPrompt(task: string, mode?: string): string {
       `- 禁止"读取项目文件""分析项目文件"这类无具体目标/文件名的步骤`
     : '';
 
+  // 批量读取类任务引导
+  const isBatch = /批量读取|read_file_batch|一次.*读|所有文件/i.test(task);
+  const batchGuide = isBatch
+    ? `\n这是批量读取任务。必须先用 list_files 列出目录文件，再用 read_file_batch 一次性读取。步骤示例：\n{"steps":[{"order":1,"action":"search","description":"列出目标目录下所有 ts 文件","targetFiles":["packages/core/src/agent/"]},{"order":2,"action":"read","description":"用 read_file_batch 批量读取前一步找到的所有文件","targetFiles":["<从 list_files 获取的文件列表>"]}],"complexity":"simple","recommendedModel":"deepseek-v4-pro"}\n` +
+      `禁止直接用 read_file 单个读——必须用 list_files + read_file_batch 组合。`
+    : '';
+
   const basePrompt = isAudit
     ? `你是 DeepSeek Code Agent。${modeNote}${auditExample}\n只输出JSON，不要解释。`
+    : isBatch
+    ? `你是 DeepSeek Code Agent。${modeNote}${batchGuide}\n只输出JSON，不要解释。`
     : `你是 DeepSeek Code Agent。${modeNote}\n生成**执行步骤**，每步写具体操作和文件名，禁止"分析/执行项目文件"这类泛化描述。最多8步。只输出JSON:{"steps":[{"order":1,"action":"read","description":"读取 package.json 了解依赖","targetFiles":["package.json"]}],"complexity":"simple|medium|complex","recommendedModel":"deepseek-v4-flash|deepseek-v4-pro"}。请用${lang}。`;
   return basePrompt;
 }

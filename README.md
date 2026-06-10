@@ -47,6 +47,13 @@ export SERPER_API_KEY=xxxx
 ~/.deepseek-code/config.json
 ```
 
+### 初始化
+
+```bash
+# 一键初始化（自动检测技术栈生成配置）
+dscode init
+```
+
 ### 使用
 
 ```bash

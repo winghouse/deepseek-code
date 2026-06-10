@@ -424,6 +424,51 @@ program
 
 // 初始化上下文缓存
 program
+  .command('init')
+  .description('初始化项目：检测技术栈并生成 AGENTS.md 和配置')
+  .action(async () => {
+    const { scanRepo } = await import('deepseek-code-core');
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+
+    console.log('🔍 检测项目技术栈...');
+    const repoInfo = await scanRepo({ workingDir: process.cwd() });
+
+    const stack = repoInfo.techStack;
+    console.log(`   语言: ${stack.language}  框架: ${stack.framework ?? '无'}  构建: ${stack.buildTool}  测试: ${stack.testFramework ?? '无'}`);
+
+    // 匹配模板
+    let templateName = 'react';
+    if (stack.framework === 'next.js') templateName = 'nextjs';
+    else if (stack.framework === 'vue') templateName = 'vue3';
+    else if (['express', 'koa', 'fastify'].some((f) => stack.framework?.includes(f))) templateName = 'express';
+    else if (stack.language === 'python') templateName = 'python-fastapi';
+
+    const tmpl = getTemplates();
+    const content = tmpl[templateName] ?? generateAgentsMdTemplate();
+
+    const agentsPath = path.join(process.cwd(), 'AGENTS.md');
+    if (fs.existsSync(agentsPath)) {
+      console.log(`⚠️  AGENTS.md 已存在，跳过创建`);
+    } else {
+      fs.writeFileSync(agentsPath, content, 'utf-8');
+      console.log(`✅ 已创建 AGENTS.md (${templateName} 模板)`);
+    }
+
+    // 配置
+    const configDir = path.join(process.cwd(), '.deepseek-code');
+    const configPath = path.join(configDir, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(configPath, JSON.stringify({
+        sessionDir: '.deepseek-code/sessions',
+      }, null, 2), 'utf-8');
+      console.log('✅ 已创建 .deepseek-code/config.json');
+    }
+
+    console.log('\n🚀 初始化完成！运行 dscode "解释项目" 试试');
+  })
+
   .command('init-context')
   .description('生成/刷新 repo-context.md 缓存以预热 DeepSeek API 缓存')
   .action(async () => {
