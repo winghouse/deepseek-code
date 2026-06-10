@@ -1,0 +1,1 @@
+{"id":"audit-004","expected":{"execution":"llm_direct","shouldScanProject":false},"actual":{"intent":"unknown","execution":"local_action","shouldScanProject":false},"details":["execution: expected llm_direct, got local_action"]}

@@ -1,0 +1,7 @@
+{"id":"agent-001","suite":"agent-tasks","input":"解释这个项目","mode":"readonly","expected":{"intent":"explain_project","execution":"agent_readonly","shouldScanProject":true},"risk":"P0"}
+{"id":"agent-002","suite":"agent-tasks","input":"修复类型错误","mode":"readonly","expected":{"intent":"debug_task","execution":"agent_readonly","shouldScanProject":true},"assertions":{"allowedToolsMustNotContain":["apply_patch","write_file","run_cmd"]},"risk":"P0"}
+{"id":"agent-003","suite":"agent-tasks","input":"排查 build 报错","mode":"readonly","expected":{"intent":"debug_task","execution":"agent_readonly","shouldScanProject":true},"risk":"P0"}
+{"id":"agent-004","suite":"agent-tasks","input":"新增用户管理页面","mode":"readonly","expected":{"intent":"code_task","execution":"agent_readonly","shouldScanProject":true},"assertions":{"allowedToolsMustNotContain":["apply_patch","write_file"]},"risk":"P0"}
+{"id":"agent-005","suite":"agent-tasks","input":"给 router.ts 写测试","mode":"readonly","expected":{"intent":"test_task","execution":"agent_readonly","shouldScanProject":true},"risk":"P1"}
+{"id":"agent-006","suite":"agent-tasks","input":"修复类型错误","mode":"ask","expected":{"intent":"debug_task","execution":"agent_plan","shouldScanProject":true},"risk":"P1"}
+{"id":"agent-007","suite":"agent-tasks","input":"新增用户管理页面","mode":"auto","expected":{"intent":"code_task","execution":"agent_execute","shouldScanProject":true},"risk":"P1"}

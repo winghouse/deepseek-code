@@ -1,0 +1,8 @@
+{"id":"cmd-001","suite":"command","input":"help","mode":"readonly","expected":{"intent":"command_help","execution":"local_action","shouldScanProject":false},"assertions":{"mustNotCallLLMRouter":true,"mustNotEnterAgent":true},"risk":"P0"}
+{"id":"cmd-002","suite":"command","input":"?","mode":"readonly","expected":{"execution":"local_action","shouldScanProject":false},"assertions":{"mustNotCallLLMRouter":true,"mustNotEnterAgent":true},"risk":"P0"}
+{"id":"cmd-003","suite":"command","input":"帮助","mode":"readonly","expected":{"execution":"local_action","shouldScanProject":false},"assertions":{"mustNotCallLLMRouter":true,"mustNotEnterAgent":true},"risk":"P0"}
+{"id":"cmd-004","suite":"command","input":"/help","mode":"readonly","expected":{"execution":"local_action","shouldScanProject":false},"assertions":{"mustNotCallLLMRouter":true,"mustNotEnterAgent":true},"risk":"P0"}
+{"id":"cmd-005","suite":"command","input":"/status","mode":"readonly","expected":{"execution":"local_action","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true,"mustNotCallLLMRouter":true},"risk":"P0"}
+{"id":"cmd-006","suite":"command","input":"/sessions","mode":"readonly","expected":{"execution":"local_action","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true,"mustNotCallLLMRouter":true},"risk":"P0"}
+{"id":"cmd-007","suite":"command","input":"/exit","mode":"readonly","expected":{"execution":"local_action","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true,"mustNotCallLLMRouter":true},"risk":"P0"}
+{"id":"cmd-008","suite":"command","input":"/clear","mode":"readonly","expected":{"execution":"local_action","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true,"mustNotCallLLMRouter":true},"risk":"P0"}

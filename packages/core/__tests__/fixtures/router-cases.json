@@ -1,0 +1,884 @@
+[
+  {
+    "input": "help",
+    "expected": {
+      "execution": "local_action",
+      "scanProject": false
+    },
+    "category": "command"
+  },
+  {
+    "input": "?",
+    "expected": {
+      "execution": "local_action",
+      "scanProject": false
+    },
+    "category": "command"
+  },
+  {
+    "input": "帮助",
+    "expected": {
+      "execution": "local_action",
+      "scanProject": false
+    },
+    "category": "command"
+  },
+  {
+    "input": "你好",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "greeting"
+  },
+  {
+    "input": "hi",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "greeting"
+  },
+  {
+    "input": "hello",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "greeting"
+  },
+  {
+    "input": "在吗",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "greeting"
+  },
+  {
+    "input": "早上好",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "greeting"
+  },
+  {
+    "input": "你可以帮我做什么",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "你能做什么",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "有哪些功能",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "怎么用",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "你能干嘛",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "有哪些命令",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "介绍一下你自己",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "如何使用 dscode",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "使用教程",
+    "expected": {
+      "intent": "capability_question",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "capability"
+  },
+  {
+    "input": "解释这个项目",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "分析项目架构",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "帮我看看这个项目",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "你好，帮我解释这个项目",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "全面分析这个项目",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "检查项目有没有优化点",
+    "expected": {
+      "intent": "audit_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "审查代码质量",
+    "expected": {
+      "intent": "audit_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "看看有没有安全漏洞",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "分析 core 包的依赖关系",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "了解项目结构",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "解释 router.ts 的作用",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "检查代码里有没有 N+1 查询",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "修复首页按钮的跳转 bug",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "排查登录报错",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "为什么构建失败了",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "解决类型错误",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "修复 scanner.ts 的 TOML 解析问题",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "debug 一下路由问题",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "fix the type error in scanner.ts",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "修复空指针异常",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "为什么 eslint 报错",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "怎么解决这个 TypeScript 错误",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "帮我看看这个报错",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "debug"
+  },
+  {
+    "input": "新增用户管理页面",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "添加导出功能",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "重构认证模块",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "实现搜索接口",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "修改配置文件",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "给 loop.ts 加点注释",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "add a new endpoint for users",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "新增一个日志中间件",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "创建用户注册接口",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "开发文件上传组件",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "编写单元测试",
+    "expected": {
+      "intent": "test_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "test"
+  },
+  {
+    "input": "补充测试用例",
+    "expected": {
+      "intent": "test_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "test"
+  },
+  {
+    "input": "加 vitest 测试",
+    "expected": {
+      "intent": "test_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "test"
+  },
+  {
+    "input": "run the tests",
+    "expected": {
+      "intent": "test_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "test"
+  },
+  {
+    "input": "补充 router.ts 的单元测试",
+    "expected": {
+      "intent": "test_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "test"
+  },
+  {
+    "input": "帮我看看",
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "ambiguous"
+  },
+  {
+    "input": "这个",
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "ambiguous"
+  },
+  {
+    "input": "能用了吗",
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "ambiguous"
+  },
+  {
+    "input": "A",
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "extreme"
+  },
+  {
+    "input": "继续",
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "context"
+  },
+  {
+    "input": "修复首页bug",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "fix bug in login page",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "debug"
+  },
+  {
+    "input": "explain this project",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "explain"
+  },
+  {
+    "input": "add user management page",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "code"
+  },
+  {
+    "input": "write unit tests for the API",
+    "expected": {
+      "intent": "test_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "test"
+  },
+  {
+    "input": "你好帮我修复首页加载很慢的bug",
+    "expected": {
+      "intent": "debug_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "compound"
+  },
+  {
+    "input": "解释项目结构然后看看有没有安全问题",
+    "expected": {
+      "intent": "audit_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "compound"
+  },
+  {
+    "input": "给我写个login页面顺便加单元测试",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "compound"
+  },
+  {
+    "input": "重构core包然后把shared类型也整理一下",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "compound"
+  },
+  {
+    "input": "分析代码质量并修复发现的bug",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "compound"
+  },
+  {
+    "input": "/exit",
+    "expected": {
+      "execution": "local_action",
+      "scanProject": false
+    },
+    "category": "slash"
+  },
+  {
+    "input": "/help",
+    "expected": {
+      "execution": "local_action",
+      "scanProject": false
+    },
+    "category": "slash"
+  },
+  {
+    "input": "/status",
+    "expected": {
+      "execution": "local_action",
+      "scanProject": false
+    },
+    "category": "slash"
+  },
+  {
+    "input": "/sessions",
+    "expected": {
+      "execution": "local_action",
+      "scanProject": false
+    },
+    "category": "slash"
+  },
+  {
+    "input": "这个项目是做什么的",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "explain"
+  },
+  {
+    "input": "你已经修复了吗再检查一次",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "context"
+  },
+  {
+    "input": "这个文件干嘛的",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "explain"
+  },
+  {
+    "input": "帮我解释一下 packages/core/src/agent/router.ts",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "explain"
+  },
+  {
+    "input": "优化首页加载速度",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "code"
+  },
+  {
+    "input": "上面我们聊了什么",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "context"
+  },
+  {
+    "input": "刚才你分析了什么",
+    "expected": {
+      "intent": "explain_project",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "context"
+  },
+  {
+    "input": "刚才结论是什么",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "context"
+  },
+  {
+    "input": "继续上次的任务",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "context"
+  },
+  {
+    "input": "帮我写代码",
+    "expected": {
+      "intent": "code_task",
+      "execution": "agent_readonly",
+      "scanProject": true
+    },
+    "category": "ambiguous"
+  },
+  {
+    "input": "有个问题",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "ambiguous"
+  },
+  {
+    "input": "修复bu g",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "typo"
+  },
+  {
+    "input": "解释项木",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "typo"
+  },
+  {
+    "input": "新增也面",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "typo"
+  },
+  {
+    "input": "你觉得这个设计怎么样",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "opinion"
+  },
+  {
+    "input": "有没有更好的方案",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "opinion"
+  },
+  {
+    "input": "这个架构合理吗",
+    "expected": {
+      "needsLLM": true,
+      "execution": "llm_direct"
+    },
+    "category": "opinion"
+  },
+  {
+    "input": "看下这个链接是做什么的？https://docs.apimart.ai/cn",
+    "expected": {
+      "intent": "webpage_summary",
+      "execution": "url_fetch_pipeline",
+      "scanProject": false
+    },
+    "category": "url"
+  },
+  {
+    "input": "https://github.com/facebook/react 帮我总结一下",
+    "expected": {
+      "intent": "webpage_summary",
+      "execution": "url_fetch_pipeline",
+      "scanProject": false
+    },
+    "category": "url"
+  },
+  {
+    "input": "读一下 https://nodejs.org/api/fs.html 的文档",
+    "expected": {
+      "intent": "webpage_summary",
+      "execution": "url_fetch_pipeline",
+      "scanProject": false
+    },
+    "category": "url"
+  },
+  {
+    "input": "https://api-docs.deepseek.com",
+    "expected": {
+      "intent": "webpage_summary",
+      "execution": "url_fetch_pipeline",
+      "scanProject": false
+    },
+    "category": "url"
+  },
+  {
+    "input": "看下这个链接是做什么的？https://docs.apimart.ai/cn",
+    "expected": {
+      "intent": "webpage_summary",
+      "execution": "url_fetch_pipeline",
+      "scanProject": false
+    },
+    "category": "external_resource"
+  },
+  {
+    "input": "https://api-docs.deepseek.com",
+    "expected": {
+      "intent": "webpage_summary",
+      "execution": "url_fetch_pipeline",
+      "scanProject": false
+    },
+    "category": "external_resource"
+  },
+  {
+    "input": "这个链接安全吗？https://x.com/test",
+    "expected": {
+      "intent": "url_safety_check",
+      "execution": "url_fetch_pipeline",
+      "scanProject": false
+    },
+    "category": "external_resource"
+  },
+  {
+    "input": "你现在的规划器是什么?",
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false,
+      "needsLLM": true
+    },
+    "category": "project_self"
+  },
+  {
+    "input": "讲一下",
+    "expected": {
+      "intent": "conversation_summary",
+      "execution": "llm_direct",
+      "scanProject": false,
+      "needsLLM": true
+    },
+    "category": "context"
+  },
+  {
+    "input": "展开说说",
+    "expected": {
+      "intent": "conversation_summary",
+      "execution": "llm_direct",
+      "scanProject": false,
+      "needsLLM": true
+    },
+    "category": "context"
+  }
+]

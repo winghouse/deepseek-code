@@ -1,0 +1,5 @@
+{"id":"chat-001","suite":"direct-chat","input":"你好","mode":"readonly","expected":{"intent":"small_talk","execution":"llm_direct","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true,"mustNotScanProject":true},"risk":"P0"}
+{"id":"chat-002","suite":"direct-chat","input":"你可以帮我做什么","mode":"readonly","expected":{"intent":"capability_question","execution":"llm_direct","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true,"mustNotScanProject":true},"risk":"P0"}
+{"id":"chat-003","suite":"direct-chat","input":"怎么使用这个 CLI","mode":"readonly","expected":{"intent":"capability_question","execution":"llm_direct","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true},"risk":"P1"}
+{"id":"chat-004","suite":"direct-chat","input":"你能做什么","mode":"readonly","expected":{"intent":"capability_question","execution":"llm_direct","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true},"risk":"P1"}
+{"id":"chat-005","suite":"direct-chat","input":"有哪些命令","mode":"readonly","expected":{"intent":"capability_question","execution":"llm_direct","shouldScanProject":false},"assertions":{"mustNotEnterAgent":true},"risk":"P1"}

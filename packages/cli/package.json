@@ -1,0 +1,26 @@
+{
+  "name": "deepseek-codecli",
+  "version": "0.4.0",
+  "description": "DeepSeek V4 原生 AI 编程 Agent CLI — 面向中文开发者",
+  "type": "module",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/winghouse-npm/deepseek-code" },
+  "keywords": ["deepseek", "code-agent", "cli", "ai-coding", "chinese"],
+  "engines": { "node": ">=20.0.0" },
+  "bin": { "dscode": "./dist/index.js" },
+  "files": ["dist/"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "deepseek-code-core": "workspace:*",
+    "deepseek-code-shared": "workspace:*",
+    "commander": "^13.1.0",
+    "execa": "^9.6.1"
+  },
+  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.7.0" }
+}

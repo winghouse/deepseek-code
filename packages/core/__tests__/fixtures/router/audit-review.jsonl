@@ -1,0 +1,6 @@
+{"id":"audit-001","suite":"audit-review","input":"帮我检查一下当前项目是否有需要优化的地方或者漏洞","mode":"readonly","expected":{"intent":"audit_task","execution":"agent_readonly","shouldScanProject":true},"risk":"P0"}
+{"id":"audit-002","suite":"audit-review","input":"检查安全漏洞","mode":"readonly","expected":{"intent":"audit_task","execution":"agent_readonly","shouldScanProject":true},"assertions":{"allowedToolsMustNotContain":["apply_patch","write_file","run_cmd"]},"risk":"P0"}
+{"id":"audit-003","suite":"audit-review","input":"审查代码质量","mode":"readonly","expected":{"intent":"audit_task","execution":"agent_readonly","shouldScanProject":true},"assertions":{"allowedToolsMustNotContain":["apply_patch","write_file","run_cmd"]},"risk":"P0"}
+{"id":"audit-004","suite":"audit-review","input":"检查当前 git diff 有没有问题","mode":"readonly","expected":{"execution":"llm_direct","shouldScanProject":false},"risk":"P1","assertions":{"mustNotEnterAgent":true}}
+{"id":"audit-005","suite":"audit-review","input":"全面分析架构和技术债","mode":"readonly","expected":{"intent":"explain_project","execution":"agent_readonly","shouldScanProject":true},"risk":"P1"}
+{"id":"audit-006","suite":"audit-review","input":"安全审查并给出修复方案","mode":"readonly","expected":{"intent":"audit_task","execution":"agent_readonly","shouldScanProject":true},"assertions":{"allowedToolsMustNotContain":["apply_patch","write_file"]},"risk":"P0"}

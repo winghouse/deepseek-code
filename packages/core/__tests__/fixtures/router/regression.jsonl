@@ -1,0 +1,4 @@
+{"id":"reg-001","suite":"regression","input":"你可以帮我做什么","mode":"readonly","expected":{"intent":"capability_question","execution":"llm_direct","shouldScanProject":false},"risk":"P0"}
+{"id":"reg-002","suite":"regression","input":"解释这个项目","mode":"readonly","expected":{"intent":"explain_project","execution":"agent_readonly","shouldScanProject":true},"risk":"P0"}
+{"id":"reg-003","suite":"regression","input":"修复首页按钮的跳转 bug","mode":"readonly","expected":{"intent":"debug_task","execution":"agent_readonly","shouldScanProject":true},"assertions":{"allowedToolsMustNotContain":["apply_patch","write_file","run_cmd"]},"risk":"P0"}
+{"id":"reg-004","suite":"regression","input":"新增用户管理页面","mode":"readonly","expected":{"intent":"code_task","execution":"agent_readonly","shouldScanProject":true},"assertions":{"allowedToolsMustNotContain":["apply_patch","write_file","run_cmd"]},"risk":"P0"}

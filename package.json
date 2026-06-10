@@ -1,0 +1,41 @@
+{
+  "name": "deepseek-code",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DeepSeek Code：面向中文开发者的低成本、长上下文、本地可控 AI 编程 Agent CLI",
+  "keywords": [
+    "deepseek",
+    "code-agent",
+    "cli",
+    "ai-coding",
+    "chinese"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deepseek-code/deepseek-code"
+  },
+  "homepage": "https://github.com/deepseek-code/deepseek-code#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@11.5.1",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r dev",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:eval": "vitest run .evals/",
+    "test:all": "vitest run && vitest run .evals/",
+    "cli": "pnpm --filter @deepseek-code/cli dev"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.20",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.8"
+  }
+}

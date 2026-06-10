@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.evals/
+.deepseek-code/
+.git/
+.router-eval/
+packages/*/__tests__/
+packages/*/dist/
