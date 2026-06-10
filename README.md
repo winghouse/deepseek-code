@@ -1,6 +1,8 @@
 # DeepSeek Code
 
 > 🤖 面向中文开发者的 DeepSeek V4 原生 AI 编程 Agent CLI
+>
+> 🏗️ **本项目 100% 由 DeepSeek V4 构建**——从架构设计到代码实现，全部由 AI 完成
 
 [![CI](https://github.com/deepseek-code/deepseek-code/actions/workflows/ci.yml/badge.svg)](https://github.com/deepseek-code/deepseek-code/actions/workflows/ci.yml)
 ![Tests](https://img.shields.io/badge/tests-278%20passed-green)
@@ -127,3 +129,7 @@ pnpm cli          # 启动 CLI
 ## 许可证
 
 MIT
+
+---
+
+> 🏗️ 本项目 100% 由 **DeepSeek V4** 构建。从架构设计、类型系统、路由引擎到评测体系，全部代码由 AI 生成，人工仅做需求引导和质量验证。
