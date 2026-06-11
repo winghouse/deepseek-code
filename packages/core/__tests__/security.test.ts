@@ -136,18 +136,16 @@ describe('路径穿越防护', () => {
 });
 
 describe('runCmd 直接 execa（不拼接 shell）', () => {
-  it('node 不在白名单', async () => {
+  it('node 在白名单（三模式权限门控）', async () => {
     const tools = createToolExecutors({ workingDir: process.cwd(), mode: 'ask' });
     const result = await tools.runCmd({ executable: 'node', args: ['-e', '1+1'] });
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('UNSAFE_EXECUTABLE');
+    expect(result.success).toBe(true);
   });
 
-  it('npx 不在白名单', async () => {
+  it('npx 在白名单（三模式权限门控）', async () => {
     const tools = createToolExecutors({ workingDir: process.cwd(), mode: 'ask' });
     const result = await tools.runCmd({ executable: 'npx', args: ['--version'] });
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('UNSAFE_EXECUTABLE');
+    expect(result.success).toBe(true);
   });
 
   it('pnpm 在白名单', async () => {

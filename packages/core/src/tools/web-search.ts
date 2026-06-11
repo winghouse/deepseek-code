@@ -453,28 +453,20 @@ export async function executeWebSearch(
   // 2. 搜狗搜索 (免费，境内可用)
   try {
     const results = await searchSogou(query.trim(), merged);
-    if (results.length > 0) return makeResult(true, query, results, start, "sogou");
+    if (results.length > 0) return makeResult(true, query, results, start, 'sogou');
   } catch { }
 
-  // 2b. 百度搜索 (免费，境内最常用)
+  // 3. 百度搜索 (免费，境内最常用)
   try {
     const results = await searchBaidu(query.trim(), merged);
-    if (results.length > 0) return makeResult(true, query, results, start, "sogou");
+    if (results.length > 0) return makeResult(true, query, results, start, 'baidu');
   } catch { }
-  try {
-    const results = await searchSogou(query.trim(), merged);
-    if (results.length > 0) {
-      return makeResult(true, query, results, start, 'sogou');
-    }
-  } catch { /* fall through */ }
 
-  // 3. Bing 搜索 (国际兜底)
+  // 4. Bing 搜索 (国际兜底)
   try {
     const results = await searchBing(query.trim(), merged);
-    if (results.length > 0) {
-      return makeResult(true, query, results, start, 'duckduckgo');
-    }
-    return makeResult(false, query, results, start, 'duckduckgo', '所有搜索引擎均无结果');
+    if (results.length > 0) return makeResult(true, query, results, start, 'bing');
+    return makeResult(false, query, results, start, 'bing', '所有搜索引擎均无结果');
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return makeResult(false, query, [], start, 'duckduckgo', `搜索不可用: ${message}`);
@@ -498,6 +490,13 @@ export async function executeWebFetch(
   config: WebFetchConfig = {},
 ): Promise<WebFetchResult> {
   const start = Date.now();
+
+  // ═══ SSRF 防护: 统一走 validateUrl ═══
+  const urlCheck = validateUrl(url);
+  if (!urlCheck.valid) {
+    return { success: false, url, content: '', contentLength: 0, elapsedMs: Date.now() - start, fetchQuality: 'blocked', error: urlCheck.error };
+  }
+
   const maxChars = config.maxChars ?? 5000;
   const timeout = config.timeout ?? 15000;
   const maxPagesInput = config.maxPages ?? 1;
@@ -594,6 +593,14 @@ async function fetchSinglePage(
       signal: controller.signal,
       redirect: 'follow',
     });
+
+    // 重定向后二次校验: 防止 302→内网
+    if (res.url !== url) {
+      const redirectCheck = validateUrl(res.url);
+      if (!redirectCheck.valid) {
+        return { success: false, html: '', content: '', error: `重定向目标被拦截: ${redirectCheck.error}` };
+      }
+    }
 
     if (!res.ok) {
       return { success: false, html: '', content: '', error: `HTTP ${res.status}: ${res.statusText}` };

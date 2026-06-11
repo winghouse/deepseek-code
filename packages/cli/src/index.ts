@@ -311,10 +311,11 @@ program
   .description('系统评测 (target: router | task)')
   .option('--suite <name>', '指定评测套件')
   .option('--format <fmt>', '输出格式: json, markdown', 'markdown')
-  .option('--live', '使用真实 LLM Router（默认 mock）')
+  .option('--live-router', '真实调用 LLM Router (仅路由, 不跑pipeline)')
+  .option('--live-task', '真实调用 LLM Router + Pipeline (需API Key)')
   .action(async (target: string, options) => {
     if (target === 'task') {
-      // ═══ dscode eval task ═══
+      // ═══ dscode eval task — 三层模式: mock(离线) / live-router / live-task ═══
       const { loadTaskFixtures, scoreTaskEval, generateTaskEvalReport, formatTaskEvalReport, routeInput } = await import('deepseek-code-core');
       const fs = await import('node:fs');
       const path = await import('node:path');
@@ -332,111 +333,105 @@ program
         ? allCases.filter(c => c.suite === suiteFilter || c.suite.includes(suiteFilter))
         : allCases;
 
-      console.log('🧪 dscode Task Eval\n');
-      console.log(`📋 加载 ${filtered.length} 条任务 (${allCases.length} 总, ${new Set(allCases.map(c => c.suite)).size} 套件)\n`);
-
-      const isLive = !!options.live;
+      const liveRouter = !!options.liveRouter;
+      const liveTask = !!options.liveTask;
+      const evalMode = liveTask ? 'live-task' : liveRouter ? 'live-router' : 'mock';
       const config = loadConfig();
       const apiKey = config.apiKey || process.env.DEEPSEEK_API_KEY;
 
-      if (isLive && apiKey) {
-        console.log('🔴 LIVE 模式：实际执行 pipeline\n');
-      } else if (isLive) {
-        console.log('⚠️ --live 需要 DEEPSEEK_API_KEY，降级为路由评测\n');
+      console.log(`🧪 dscode Task Eval [${evalMode}]\n`);
+      console.log(`📋 加载 ${filtered.length} 条任务 (${new Set(allCases.map(c => c.suite)).size} 套件)\n`);
+
+      if ((liveRouter || liveTask) && !apiKey) {
+        console.log('⚠️ --live-router/--live-task 需要 DEEPSEEK_API_KEY，降级为 mock 模式\n');
       }
 
       const results: any[] = [];
-      const startTime = Date.now();
 
       for (const tc of filtered) {
-        const ctx = {
+        const ctx: any = {
           mode: tc.mode,
           projectName: tc.suite,
           projectPath: tc.casePath,
         };
+        // 注入 context (conversationFocus/pendingAction/lastExternalResource等)
+        if (tc.context) Object.assign(ctx, tc.context);
 
         const caseStart = Date.now();
         let routeResult: any;
         let toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
         let outputText = '';
 
-        // 1. 路由
-        try {
-          routeResult = await routeInput(tc.task, ctx);
-        } catch {
-          routeResult = { intent: 'unknown', execution: 'local_action', shouldScanProject: false };
+        // 1. 路由: mock注入 或 live-router 或 默认 heuristic
+        if (tc.mockLLMRouter) {
+          // 离线 mock 模式: 直接注入预期 RouteDecision, 跳过真实 LLM
+          routeResult = {
+            intent: tc.mockLLMRouter.intent || 'unknown',
+            execution: tc.mockLLMRouter.execution || 'agent_readonly',
+            shouldScanProject: tc.mockLLMRouter.shouldScanProject ?? true,
+            allowedTools: tc.mockLLMRouter.allowedTools || [],
+            target: tc.mockLLMRouter.target || { type: 'workspace' },
+            confidence: 0.95,
+            reason: 'mock LLM Router',
+          };
+        } else if ((liveRouter || liveTask) && apiKey) {
+          // live 模式: 真实调用 LLM Router
+          try {
+            routeResult = await routeInput(tc.task, ctx, {
+              async chatJson(prompt: string) {
+                const res = await fetch(`${config.baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+                  body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'user', content: prompt }], max_tokens: 256, temperature: 0, stream: false, thinking: { type: 'disabled' } }),
+                  signal: AbortSignal.timeout(10000),
+                });
+                const data = await res.json() as any;
+                return data.choices?.[0]?.message?.content ?? '{}';
+              },
+            });
+          } catch { routeResult = { intent: 'unknown', execution: 'agent_readonly', shouldScanProject: true }; }
+        } else {
+          // 默认: heuristic (无LLM Client)
+          try { routeResult = await routeInput(tc.task, ctx); }
+          catch { routeResult = { intent: 'unknown', execution: 'agent_readonly', shouldScanProject: true }; }
         }
 
-        // 2. --live: 实际执行 pipeline
-        if (isLive && apiKey) {
+        // 2. live-task: 实际执行 pipeline
+        if (liveTask && apiKey) {
           try {
-            const isRepair = tc.suite === 'repair-typescript';
-            const isDiff = tc.suite === 'diff-review';
-            const isReview = tc.suite === 'code-review';
-
-            if (isRepair) {
+            if (tc.suite === 'repair-typescript') {
               const { runRepairPipeline } = await import('deepseek-code-core');
-              const proClient = {
-                async chat(prompt: string) {
-                  const res = await fetch(`${config.baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-                    body: JSON.stringify({ model: 'deepseek-v4-pro', messages: [{ role: 'user', content: prompt }], max_tokens: 1024, temperature: 0.1 }),
-                    signal: AbortSignal.timeout(30000),
-                  });
-                  const data = await res.json() as any;
-                  return data.choices?.[0]?.message?.content ?? '';
-                },
-              };
-              const repairResult = await runRepairPipeline({
-                workingDir: tc.casePath,
-                taskDescription: tc.task,
-                mode: tc.mode,
-                proClient,
-              });
-              outputText = `${repairResult.summary}\n${repairResult.rootCause ?? ''}\n${repairResult.suggestedFix ?? ''}`;
-              toolCalls = repairResult.filesExamined.map(f => ({ name: 'read_file', args: { filePath: f } }));
-              if (repairResult.patchProposal) toolCalls.push({ name: 'apply_patch', args: { patch: repairResult.patchProposal } });
-            } else if (isDiff) {
+              const proClient = { async chat(p: string) {
+                const res = await fetch(`${config.baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+                  body: JSON.stringify({ model: 'deepseek-v4-pro', messages: [{ role: 'user', content: p }], max_tokens: 1024, temperature: 0.1 }),
+                  signal: AbortSignal.timeout(30000),
+                });
+                return ((await res.json()) as any).choices?.[0]?.message?.content ?? '';
+              }};
+              const rr = await runRepairPipeline({ workingDir: tc.casePath, taskDescription: tc.task, mode: tc.mode, proClient });
+              outputText = `${rr.summary}\n${rr.rootCause ?? ''}\n${rr.suggestedFix ?? ''}`;
+              toolCalls = rr.filesExamined.map(f => ({ name: 'read_file', args: { filePath: f } }));
+            } else if (tc.suite === 'diff-review') {
               const { runReviewDiffPipeline } = await import('deepseek-code-core');
-              const diffResult = await runReviewDiffPipeline({
-                workingDir: tc.casePath,
-              });
-              outputText = `${diffResult.summary}\n${diffResult.findings.map(f => `${f.file}: ${f.description}`).join('\n')}`;
+              const dr = await runReviewDiffPipeline({ workingDir: tc.casePath });
+              outputText = `${dr.summary}\n${dr.findings.map(f => `${f.file}: ${f.description}`).join('\n')}`;
               toolCalls = [{ name: 'git_diff', args: {} }, { name: 'git_status', args: {} }];
-            } else if (isReview) {
+            } else if (tc.suite === 'code-review') {
               const { runAuditPipeline } = await import('deepseek-code-core');
-              const auditResult = await runAuditPipeline({
-                workingDir: tc.casePath,
-                mode: 'standard',
-              });
-              outputText = auditResult.findings.map(f => `${f.severity}: ${f.title}`).join('\n');
-              if (!outputText) outputText = 'no findings';
-            } else {
-              outputText = routeResult?.reason || '';
+              const ar = await runAuditPipeline({ workingDir: tc.casePath, mode: 'standard' });
+              outputText = ar.findings.map(f => `${f.severity}: ${f.title}`).join('\n') || 'no findings';
             }
-          } catch (err) {
-            outputText = `[LIVE ERROR] ${(err as Error).message}`;
-          }
+          } catch (err) { outputText = `[ERROR] ${(err as Error).message}`; }
         } else {
           outputText = routeResult?.reason || '';
         }
 
-        const result = scoreTaskEval(tc, {
-          routeResult,
-          toolCalls,
-          outputText,
-          durationMs: Date.now() - caseStart,
-        });
-
+        const result = scoreTaskEval(tc, { routeResult, toolCalls, outputText, durationMs: Date.now() - caseStart, evalMode });
         results.push(result);
         const icon = result.passed ? '✅' : '❌';
-        const dur = result.durationMs > 0 ? ` (${result.durationMs}ms)` : '';
-        if (isLive) {
-          console.log(`  ${icon} [${tc.risk}] ${tc.suite}/${tc.id}${dur} files=${result.score.filesHit}/${result.score.filesExpected} out=${result.score.outputHits}/${result.score.outputExpected}`);
-        } else {
-          console.log(`  ${icon} [${tc.risk}] ${tc.suite}/${tc.id}${dur}`);
-        }
+        const extra = liveTask ? ` f=${result.score.filesHit}/${result.score.filesExpected} o=${result.score.outputHits}/${result.score.outputExpected}` : '';
+        console.log(`  ${icon} [${tc.risk}] ${tc.suite}/${tc.id}${extra}`);
       }
 
       const report = generateTaskEvalReport(results);
@@ -732,7 +727,7 @@ program
 // AutoFix — 自主修复闭环
 program
   .command('autofix')
-  .description('自动修复项目问题 (audit → repair → verify → retry)')
+  .description('审计并生成修复建议 (audit → repair proposal, 暂不自动apply)')
   .option('-s, --scope <scopes>', '修复范围 (逗号分隔): security,type-safety,config,test,maintainability', 'all')
   .option('-r, --retries <n>', '每个问题最大修复轮次', '3')
   .option('--verify <command>', '验证命令', 'pnpm typecheck')

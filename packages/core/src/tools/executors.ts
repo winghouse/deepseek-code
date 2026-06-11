@@ -625,7 +625,7 @@ export async function executeTool(
   }
 
   // ═══ 权限检查 ═══
-  const writeTools = new Set(['apply_patch', 'write_file', 'run_command']);
+  const writeTools = new Set(['apply_patch', 'write_file', 'run_cmd', 'run_command']);
   const isWrite = writeTools.has(name);
 
   if (ctx?.mode === 'readonly' && isWrite) {

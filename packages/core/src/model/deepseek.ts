@@ -39,16 +39,12 @@ export class DeepSeekClient implements ModelClient {
         },
       }));
       body.tool_choice = options.toolChoice ?? 'auto';
-
-      // DeepSeek V4: JSON 模式 + 推理深度
-      if (options?.responseFormat) body.response_format = { type: options.responseFormat };
-      if (options?.reasoningEffort) body.reasoning_effort = options.reasoningEffort;
     }
 
-    // Flash 默认 thinking 会消耗大量 output tokens → Plan 生成等简单任务禁用
-    if (options?.disableThinking) {
-      body.thinking = { type: 'disabled' };
-    }
+    // DeepSeek V4: JSON 模式 + 推理深度 + thinking 控制 (独立于 tools)
+    if (options?.responseFormat) body.response_format = { type: options.responseFormat };
+    if (options?.reasoningEffort) body.reasoning_effort = options.reasoningEffort;
+    if (options?.disableThinking) body.thinking = { type: 'disabled' };
 
     let lastError = null;
     const maxRetries = 3;

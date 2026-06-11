@@ -500,7 +500,7 @@ export interface WebSearchResult {
   totalEstimated: number;
   elapsedMs: number;
   /** 搜索来源 */
-  source: 'duckduckgo' | 'tavily' | 'custom' | 'sogou' | 'serper';
+  source: 'duckduckgo' | 'tavily' | 'custom' | 'sogou' | 'serper' | 'baidu' | 'bing';
   error?: string;
 }
 

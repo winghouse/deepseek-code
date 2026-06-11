@@ -271,6 +271,13 @@ export class WorkflowEngine {
             result.error = { code: 'NO_TOOL', message: 'TOOL 节点缺少 tool', recoverable: false };
             break;
           }
+          // 统一权限: allowedTools白名单 + readonly模式禁写工具
+          const writeTools = new Set(['apply_patch', 'write_file', 'run_cmd', 'run_command']);
+          if (context.mode === 'readonly' && writeTools.has(node.tool)) {
+            result.status = 'blocked';
+            result.error = { code: 'READONLY_BLOCKED', message: `只读模式禁止 ${node.tool}。切换模式后可执行。`, recoverable: false };
+            break;
+          }
           if (!context.allowedTools.includes(node.tool) && context.allowedTools.length > 0) {
             result.status = 'blocked';
             result.error = { code: 'TOOL_BLOCKED', message: `工具 "${node.tool}" 不在允许列表中`, recoverable: false };

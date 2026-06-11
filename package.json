@@ -30,7 +30,7 @@
     "test:watch": "vitest",
     "test:eval": "vitest run .evals/",
     "test:all": "vitest run && vitest run .evals/",
-    "cli": "pnpm --filter @deepseek-code/cli dev"
+    "cli": "pnpm build && node packages/cli/dist/index.js"
   },
   "devDependencies": {
     "@types/node": "^22.19.20",

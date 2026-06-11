@@ -51,7 +51,7 @@ export function buildGlobalPrefix(): string {
     '- read_package_json() — 读取 package.json',
     '- read_project_rules() — 读取项目规则',
     '- apply_patch(patch, filesAffected) — 应用补丁（需权限）',
-    '- run_command(command, cwd?) — 执行命令（需权限）',
+    '- run_cmd(executable, args, cwd?) — 执行命令（需权限, 可用: pnpm/npm/git/tsc/vitest/yarn/node/npx）',
     '',
     '## 安全规则',
     '- 禁止修改 .env 等敏感文件',

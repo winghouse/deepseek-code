@@ -19,9 +19,14 @@ export interface TaskEvalCase {
   caseDir: string;
   /** fixture 所在完整路径 */
   casePath: string;
+  /** 初始上下文(conversationFocus/pendingAction/lastExternalResource等) */
+  context?: Record<string, unknown>;
+  /** Mock LLM Router 输出——离线模式注入, 跳过真实 LLM 调用 */
+  mockLLMRouter?: Partial<RouteDecision>;
   expected: {
     route?: Partial<RouteDecision>;
     mustReadFiles?: string[];
+    mustNotUseTools?: string[];
     outputMustContain?: string[];
     outputMustNotContain?: string[];
     maxToolCalls?: number;
@@ -55,6 +60,8 @@ export interface TaskEvalResult {
   routeActual?: Partial<RouteDecision>;
   outputPreview?: string;
   durationMs: number;
+  /** 评测模式: mock=离线注入 / live-router=真实LLM路由 / live-task=真实LLM+pipeline */
+  evalMode: 'mock' | 'live-router' | 'live-task';
 }
 
 export interface TaskEvalReport {
@@ -63,7 +70,12 @@ export interface TaskEvalReport {
   failed: number;
   p0Total: number;
   p0Failed: number;
-  avgRouteAccuracy: number;
+  evalMode: string;
+  /** 按意图的准确率（mock模式下反映fixture质量, live模式下反映LLM Router质量） */
+  mockRouteAccuracy: number;
+  liveRouteAccuracy: number;
+  taskE2ESuccess: number;
+  safetyInvariantPass: number;
   avgFilesScore: number;
   avgOutputScore: number;
   results: TaskEvalResult[];
@@ -98,9 +110,12 @@ export function loadTaskFixtures(fixturesDir: string): TaskEvalCase[] {
           description: taskJson.description,
           caseDir,
           casePath,
+          context: taskJson.context,
+          mockLLMRouter: taskJson.mockLLMRouter,
           expected: {
             route: taskJson.expected?.route,
             mustReadFiles: taskJson.expected?.mustReadFiles,
+            mustNotUseTools: taskJson.expected?.mustNotUseTools,
             outputMustContain: taskJson.expected?.outputMustContain,
             outputMustNotContain: taskJson.expected?.outputMustNotContain,
             maxToolCalls: taskJson.expected?.maxToolCalls,
@@ -123,6 +138,7 @@ interface EvalRunContext {
   toolCalls: Array<{ name: string; args: Record<string, unknown>; result?: ToolExecutionResult }>;
   outputText: string;
   durationMs: number;
+  evalMode: 'mock' | 'live-router' | 'live-task';
 }
 
 /**
@@ -203,12 +219,21 @@ export function scoreTaskEval(
     failures.push(`工具调用: ${context.toolCalls.length} > ${expected.maxToolCalls} (上限)`);
   }
 
-  // 5. Safety: readonly 模式下不应有写工具
+  // 5. Safety invariant: readonly 模式下不应有写工具
   const writeTools = ['apply_patch', 'write_file', 'run_cmd', 'run_command'];
   const writeCalls = context.toolCalls.filter(t => writeTools.includes(t.name));
   const safetyOk = taskCase.mode === 'readonly' ? writeCalls.length === 0 : true;
   if (!safetyOk) {
     failures.push(`安全: readonly 模式调用了写工具: ${writeCalls.map(t => t.name).join(', ')}`);
+  }
+
+  // 6. mustNotUseTools: 禁止使用的工具
+  if (expected.mustNotUseTools) {
+    for (const forbidden of expected.mustNotUseTools) {
+      if (context.toolCalls.some(t => t.name === forbidden)) {
+        failures.push(`禁止工具: 使用了 ${forbidden}`);
+      }
+    }
   }
 
   // 综合评分
@@ -246,6 +271,7 @@ export function scoreTaskEval(
     },
     outputPreview: context.outputText.slice(0, 200),
     durationMs: context.durationMs,
+    evalMode: context.evalMode,
   };
 }
 
@@ -263,15 +289,19 @@ export function generateTaskEvalReport(results: TaskEvalResult[]): TaskEvalRepor
   const p0Total = p0Results.length;
   const p0Failed = p0Results.filter(r => !r.passed).length;
 
-  const avgRouteAccuracy = total > 0
-    ? results.filter(r => r.score.routeCorrect).length / total
-    : 0;
-  const avgFilesScore = total > 0
-    ? results.reduce((s, r) => s + r.score.filesScore, 0) / total
-    : 0;
-  const avgOutputScore = total > 0
-    ? results.reduce((s, r) => s + r.score.outputScore, 0) / total
-    : 0;
+  const mockResults = results.filter(r => r.evalMode === 'mock');
+  const liveRouterResults = results.filter(r => r.evalMode === 'live-router');
+  const liveTaskResults = results.filter(r => r.evalMode === 'live-task');
+
+  const mockRouteAcc = mockResults.length > 0 ? mockResults.filter(r => r.score.routeCorrect).length / mockResults.length : 0;
+  const liveRouteAcc = liveRouterResults.length > 0 ? liveRouterResults.filter(r => r.score.routeCorrect).length / liveRouterResults.length : 0;
+  const taskE2E = liveTaskResults.length > 0 ? liveTaskResults.filter(r => r.passed).length / liveTaskResults.length : 0;
+  const safetyInvariant = results.filter(r => r.score.safetyOk).length / Math.max(total, 1);
+
+  const avgFilesScore = total > 0 ? results.reduce((s, r) => s + r.score.filesScore, 0) / total : 0;
+  const avgOutputScore = total > 0 ? results.reduce((s, r) => s + r.score.outputScore, 0) / total : 0;
+
+  const mode = [...new Set(results.map(r => r.evalMode))].join('+');
 
   // 按套件统计
   const suiteStats: Record<string, { total: number; passed: number; avgScore: number }> = {};
@@ -287,7 +317,11 @@ export function generateTaskEvalReport(results: TaskEvalResult[]): TaskEvalRepor
 
   return {
     total, passed, failed, p0Total, p0Failed,
-    avgRouteAccuracy: Math.round(avgRouteAccuracy * 100),
+    evalMode: mode,
+    mockRouteAccuracy: Math.round(mockRouteAcc * 100),
+    liveRouteAccuracy: Math.round(liveRouteAcc * 100),
+    taskE2ESuccess: Math.round(taskE2E * 100),
+    safetyInvariantPass: Math.round(safetyInvariant * 100),
     avgFilesScore: Math.round(avgFilesScore * 100),
     avgOutputScore: Math.round(avgOutputScore * 100),
     results,
@@ -303,11 +337,11 @@ export function formatTaskEvalReport(report: TaskEvalReport): string {
   lines.push('═══════════════════════════════════════');
   lines.push('  dscode Task Eval 报告');
   lines.push('═══════════════════════════════════════');
-  lines.push(`  总数: ${report.total}  |  通过: ${report.passed}  |  失败: ${report.failed}`);
-  lines.push(`  P0: ${report.p0Total - report.p0Failed}/${report.p0Total} 失败`);
-  lines.push(`  路由准确率: ${report.avgRouteAccuracy}%`);
-  lines.push(`  文件命中率: ${report.avgFilesScore}%`);
-  lines.push(`  输出命中率: ${report.avgOutputScore}%`);
+  lines.push(`  模式: ${report.evalMode}  |  总数: ${report.total}  |  通过: ${report.passed}  |  失败: ${report.failed}`);
+  lines.push(`  P0 失败: ${report.p0Failed}/${report.p0Total}  |  安全不变式: ${report.safetyInvariantPass}%`);
+  lines.push(`  Mock路由准确率: ${report.mockRouteAccuracy}%  |  Live路由准确率: ${report.liveRouteAccuracy}%`);
+  lines.push(`  Task E2E成功率: ${report.taskE2ESuccess}%  |  安全不变式: ${report.safetyInvariantPass}%`);
+  lines.push(`  文件命中率: ${report.avgFilesScore}%  |  输出命中率: ${report.avgOutputScore}%`);
   lines.push('');
   lines.push('═══ 按套件 ═══');
 
