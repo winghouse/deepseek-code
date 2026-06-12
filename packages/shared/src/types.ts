@@ -164,6 +164,8 @@ export interface Session {
   stopReason?: StopReason;
   /** 会话统计：KV Cache / Token / Model / Cost */
   stats?: SessionStats;
+  /** 修复完成度复核结果（内部字段——结构化报告直接覆盖 summary） */
+  __fvResult?: Record<string, unknown>;
 }
 
 // ---- 会话统计 ----

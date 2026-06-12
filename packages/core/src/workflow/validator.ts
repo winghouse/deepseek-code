@@ -8,7 +8,7 @@ import type { WorkflowDefinition, WorkflowNode, WorkflowEdge } from 'deepseek-co
 const KNOWN_TOOLS = new Set([
   'read_file', 'read_file_range', 'read_file_batch',
   'search_code', 'list_files', 'glob',
-  'git_status', 'git_diff', 'git_log',
+  'git_status', 'git_diff', 'git_log', 'git_show',
   'web_search', 'web_fetch',
   'read_json_path', 'list_scripts', 'file_exists',
   'find_references', 'detect_cross_platform',

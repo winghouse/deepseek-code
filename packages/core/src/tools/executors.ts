@@ -81,6 +81,8 @@ export interface ToolExecutors {
   }) => Promise<ToolExecutionResult>;
   gitStatus: () => Promise<ToolExecutionResult>;
   gitDiff: (args: { staged?: boolean; file?: string }) => Promise<ToolExecutionResult>;
+  gitLog: (args?: { maxCount?: number }) => Promise<ToolExecutionResult>;
+  gitShow: (args?: { ref?: string; stat?: boolean }) => Promise<ToolExecutionResult>;
   readPackageJson: () => Promise<ToolExecutionResult>;
   readProjectRules: () => Promise<ToolExecutionResult>;
   // 写操作
@@ -384,6 +386,26 @@ export function createToolExecutors(ctx: ToolContext): ToolExecutors {
         };
       } catch {
         return { success: false, content: '无法获取 git diff' };
+      }
+    },
+
+    async gitLog({ maxCount = 10 } = {}) {
+      try {
+        const result = await execa('git', ['log', '--oneline', `-${maxCount}`], { cwd: workingDir, timeout: 10_000, reject: false });
+        return { success: true, content: result.stdout || '无提交记录', metadata: { count: result.stdout.split('\n').filter(Boolean).length } };
+      } catch {
+        return { success: false, content: '无法获取 git log' };
+      }
+    },
+
+    async gitShow({ ref = 'HEAD', stat = false } = {}) {
+      try {
+        const args = ['show', ref];
+        if (stat) args.push('--stat');
+        const result = await execa('git', args, { cwd: workingDir, timeout: 15_000, reject: false });
+        return { success: true, content: truncate(result.stdout || '无内容', 20_000) };
+      } catch {
+        return { success: false, content: `无法获取 git show ${ref}` };
       }
     },
 
@@ -766,6 +788,10 @@ async function executeToolInternal(
       return executors.gitStatus();
     case 'git_diff':
       return executors.gitDiff(args as { staged?: boolean; file?: string });
+    case 'git_log':
+      return executors.gitLog(args as { maxCount?: number });
+    case 'git_show':
+      return executors.gitShow(args as { ref?: string; stat?: boolean });
     case 'read_package_json':
       return executors.readPackageJson();
     case 'read_project_rules':

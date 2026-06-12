@@ -116,7 +116,7 @@ function buildContext(workspaceRoot: string, mode: 'readonly' | 'ask' | 'auto'):
     workspaceRoot,
     sessionId: `wf_${Date.now()}`,
     allowedTools: mode === 'readonly'
-      ? ['read_file', 'read_file_range', 'read_file_batch', 'search_code', 'list_files', 'glob', 'git_status', 'git_diff', 'git_log', 'web_search', 'web_fetch', 'read_json_path', 'list_scripts', 'file_exists', 'find_references', 'detect_cross_platform']
+      ? ['read_file', 'read_file_range', 'read_file_batch', 'search_code', 'list_files', 'glob', 'git_status', 'git_diff', 'git_log', 'git_show', 'web_search', 'web_fetch', 'read_json_path', 'list_scripts', 'file_exists', 'find_references', 'detect_cross_platform']
       : [],
     budgets: { ...DEFAULT_WORKFLOW_BUDGET },
     traceId: `trace_${Date.now()}`,

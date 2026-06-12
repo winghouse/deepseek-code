@@ -52,6 +52,10 @@ export type { DiffReviewResult, DiffFinding } from './tools/review-diff-pipeline
 export { runAutoFixLoop } from './tools/autofix-loop.js';
 export type { AutoFixResult, AutoFixOptions, FixAttempt } from './tools/autofix-loop.js';
 
+// Fix Verification
+export { runFixVerification, extractBaselineFromSession, isFixVerificationTask } from './tools/fix-verification.js';
+export type { FixVerificationResult, VerifiedFix, FixBaselineItem } from './tools/fix-verification.js';
+
 // Task Eval
 export { loadTaskFixtures, scoreTaskEval, generateTaskEvalReport, formatTaskEvalReport } from './tools/task-eval.js';
 export type { TaskEvalCase, TaskEvalResult, TaskEvalReport, TaskEvalScore } from './tools/task-eval.js';

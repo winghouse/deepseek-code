@@ -211,6 +211,27 @@ export const READ_ONLY_TOOLS: ToolDefinition[] = [
     },
   },
   {
+    name: 'git_log',
+    description: '查看 git 提交历史。返回最近 N 条提交的 hash 和消息。',
+    parameters: {
+      type: 'object',
+      properties: { maxCount: { type: 'number', description: '返回的提交数量，默认 10' } },
+      required: [],
+    },
+  },
+  {
+    name: 'git_show',
+    description: '查看某次提交的详细内容（diff）。可用于确认某次提交是否修复了某个问题。',
+    parameters: {
+      type: 'object',
+      properties: {
+        ref: { type: 'string', description: '提交 hash 或引用，默认 HEAD' },
+        stat: { type: 'boolean', description: '是否只显示文件变更统计' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'read_package_json',
     description: '读取并解析项目的 package.json，返回项目名称、脚本命令、依赖列表等关键信息。',
     parameters: {

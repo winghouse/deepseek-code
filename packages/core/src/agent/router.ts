@@ -267,13 +267,13 @@ function fallbackClarification(input: string): RouteDecision {
   const isCompareVerify = /哪些.*已.*修复|哪些.*已.*改|对比.*之前|审查对比|检查.*是否.*修|列出.*已.*修改/i.test(input);
 
   return {
-    intent: isRepairLike ? 'debug_task' : isAuditLike ? 'audit_task' : isCiLike ? 'audit_task' : isCompareVerify ? 'audit_task' : isExplainLike ? 'explain_project' : 'unknown',
+    intent: isCompareVerify ? 'audit_task' : isRepairLike ? 'debug_task' : isAuditLike ? 'audit_task' : isCiLike ? 'audit_task' : isExplainLike ? 'explain_project' : 'unknown',
     execution: 'agent_readonly',
     shouldScanProject: true,
     allowedTools: [],
     needsClarification: false,
     confidence: 0.35,
-    reason: `LLM Router 不可用 → ${isRepairLike ? 'debug' : isAuditLike || isCiLike || isCompareVerify ? 'audit' : isExplainLike ? 'explain' : 'agent_readonly'}`,
+    reason: `LLM Router 不可用 → ${isCompareVerify ? 'audit(verify)' : isRepairLike ? 'debug' : isAuditLike || isCiLike ? 'audit' : isExplainLike ? 'explain' : 'agent_readonly'}`,
   };
 }
 

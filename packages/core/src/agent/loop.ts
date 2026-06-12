@@ -258,6 +258,53 @@ export async function runAgentLoop(
       { role: 'system', content: promptResult.layers.globalPrefix + '\n\n' + promptResult.layers.runtimePrefix + '\n\n' + promptResult.layers.projectPrefix + '\n\n' + promptResult.layers.sessionPrefix + '\n\n' + promptResult.layers.dynamicTail },
     ];
 
+    // 修复完成度复核: 真正执行 pipeline 而非仅注入策略提示
+    const { isFixVerificationTask: isFV, extractBaselineFromSession: extractBL, runFixVerification: runFV } = await import('../tools/fix-verification.js');
+    if (isFV(taskDescription)) {
+      // 1. 提取历史问题基线
+      let baseline = extractBL(session);
+
+      // 2. 如果当前 session 无基线 → 查找最后一次有 findings 的 session
+      if (baseline.length === 0) {
+        try {
+          const recentSessions = await memory.listSessions();
+          for (const s of recentSessions.slice(0, 5)) {
+            const full = await memory.loadSession(s.id);
+            if (full && full.steps) {
+              const bl = extractBL(full);
+              if (bl.length > 0) { baseline = bl; break; }
+            }
+          }
+        } catch { /* 无历史基线 */ }
+      }
+
+      // 3. 获取 git diff 和 log 证据
+      let gitDiff = '', gitLog = '';
+      try {
+        const { execa } = await import('execa');
+        gitDiff = ((await execa('git', ['diff'], { cwd: workingDir, timeout: 10_000, reject: false })).stdout || '').slice(0, 20_000);
+        gitLog = ((await execa('git', ['log', '--oneline', '-10'], { cwd: workingDir, timeout: 10_000, reject: false })).stdout || '');
+      } catch { /* git 不可用 */ }
+
+      // 4. 执行结构化复核
+      const fvResult = runFV(baseline, gitDiff, gitLog);
+      session.__fvResult = fvResult as unknown as Record<string, unknown>; // 保存用于最终输出覆盖
+
+      // 5. 注入结果到 messages——模型基于真实数据做最终判断
+      let fvText = '## 修复完成度复核（自动对比）\n\n';
+      if (fvResult.fixed.length > 0) fvText += `✅ 已修复(${fvResult.fixed.length}): ${fvResult.fixed.map(f => f.title).join('; ')}\n`;
+      if (fvResult.partial.length > 0) fvText += `⚠️ 部分修复(${fvResult.partial.length}): ${fvResult.partial.map(f => f.title).join('; ')}\n`;
+      if (fvResult.unresolved.length > 0) fvText += `❌ 未修复(${fvResult.unresolved.length}): ${fvResult.unresolved.map(f => f.title).join('; ')}\n`;
+      if (fvResult.unknown.length > 0) fvText += `❓ 无法确认(${fvResult.unknown.length}): ${fvResult.unknown.map(f => f.title).join('; ')}\n`;
+      if (gitDiff) fvText += `\ngit_diff: 有变更 (${gitDiff.length} 字符)`;
+      if (gitLog) fvText += `\ngit_log: ${gitLog.split('\n').filter(Boolean).length} 条提交`;
+
+      messages.unshift({
+        role: 'system',
+        content: `这是修复完成度复核任务。以下数据来自程序自动对比（非模型推测）：\n${fvText}\n\n请基于以上数据验证并补充细节，输出格式:\n✅ 已确认修复: [问题] — 证据: [文件/提交]\n⚠️ 部分修复: [问题] — 缺了什么\n❌ 仍未修复: [问题]\n❓ 无法确认: [问题] — 缺少什么信息`,
+      });
+    }
+
     // 8. 进入执行循环
     return continueLoop(session, messages, model, availableTools, workingDir, tools, memory, permissionManager, readOnly, streaming, startTime, maxSteps, config.onConfirm);
   } catch (e) {
@@ -373,8 +420,8 @@ export async function continueLoop(
         messages.push({ role: 'assistant', content: finalContent });
 
         // 两阶段输出：足够多的工具调用后，先给摘要再给详情
-        // Phase 1 快速拿到核心发现 → Phase 2 前缀命中 KV Cache 流式展开
-        const canTwoPhase = streaming && stepIndex >= 3 && messages.length > 6;
+        // fix-verification 任务跳过 Phase2——结构化结果已在 summary 中
+        const canTwoPhase = streaming && stepIndex >= 3 && messages.length > 6 && !session.__fvResult;
 
         if (canTwoPhase) {
           console.log(`\n⚡ 两阶段输出 (前缀复用 KV Cache)：\n`);
@@ -597,6 +644,18 @@ export async function continueLoop(
     let summary = taskComplete
       ? `任务分析完成 (${totalTime}s, ${stepIndex} 步)`
       : `任务未能执行。可能原因: 路由错误或工具不可用。建议重试或简化任务。`;
+
+    // 修复完成度复核: 结构化结果直接写入, 不靠模型输出
+    const fvResult = session.__fvResult as import('../tools/fix-verification.js').FixVerificationResult | undefined;
+    if (fvResult) {
+      const lines = ['## 修复完成度复核\n'];
+      if (fvResult.fixed.length > 0) lines.push(`\n✅ 已确认修复 (${fvResult.fixed.length}):\n${fvResult.fixed.map(f => `  - ${f.title}\n    证据: ${f.evidence.join('; ')}`).join('\n')}`);
+      if (fvResult.partial.length > 0) lines.push(`\n⚠️ 部分修复 (${fvResult.partial.length}):\n${fvResult.partial.map(f => `  - ${f.title}\n    ${f.reason}`).join('\n')}`);
+      if (fvResult.unresolved.length > 0) lines.push(`\n❌ 仍未修复 (${fvResult.unresolved.length}):\n${fvResult.unresolved.map(f => `  - ${f.title}`).join('\n')}`);
+      if (fvResult.unknown.length > 0) lines.push(`\n❓ 无法确认 (${fvResult.unknown.length}):\n${fvResult.unknown.map(f => `  - ${f.title}\n    ${f.reason}`).join('\n')}`);
+      summary = lines.join('\n');
+      console.log(`\n📊 修复复核完成: ✅${fvResult.fixed.length} ⚠️${fvResult.partial.length} ❌${fvResult.unresolved.length} ❓${fvResult.unknown.length}`);
+    }
 
     session.completed = taskComplete;
     session.summary = summary;
