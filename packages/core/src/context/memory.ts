@@ -48,14 +48,14 @@ export class FileMemoryStore implements MemoryStore {
     }
   }
 
-  async listSessions(): Promise<{ id: string; createdAt: Date; taskDescription: string; completed: boolean }[]> {
+  async listSessions(): Promise<{ id: string; createdAt: Date; taskDescription: string; completed: boolean; stats?: import('deepseek-code-shared').SessionStats }[]> {
     try {
       const files = fs.readdirSync(this.sessionsDir).filter((f) => f.endsWith('.json'));
       return files
         .map((f) => {
           try {
             const s = JSON.parse(fs.readFileSync(path.join(this.sessionsDir, f), 'utf-8')) as Session;
-            return { id: s.id, createdAt: s.createdAt, taskDescription: s.taskDescription, completed: s.completed };
+            return { id: s.id, createdAt: s.createdAt, taskDescription: s.taskDescription, completed: s.completed, stats: s.stats };
           } catch {
             return null;
           }
@@ -190,6 +190,7 @@ export function clearInteractiveState(baseDir: string): void {
 export function buildLastAgentResult(
   task: string,
   session: { summary?: string; steps: Array<{ type: string; content: string; toolResults?: Array<{ content: string }> }> },
+  intent?: import('deepseek-code-shared').UserIntent,
 ): InteractiveSessionState['lastAgentResult'] {
   const toolSteps = session.steps.filter((s) => s.type === 'tool_call');
   const filesRead = new Set<string>();
@@ -209,7 +210,7 @@ export function buildLastAgentResult(
 
   return {
     task: task.slice(0, 200),
-    intent: 'debug_task',
+    intent: intent || 'unknown',
     execution: 'agent_readonly',
     summary: session.summary?.slice(0, 300) ?? '',
     filesRead: [...filesRead].slice(0, 20),

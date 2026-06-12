@@ -162,6 +162,31 @@ export interface Session {
   toolResultsCache: Record<string, ToolCacheEntry>;
   staleFiles?: string[];
   stopReason?: StopReason;
+  /** 会话统计：KV Cache / Token / Model / Cost */
+  stats?: SessionStats;
+}
+
+// ---- 会话统计 ----
+
+export interface SessionStats {
+  /** 总 prompt tokens */
+  totalPromptTokens: number;
+  /** 总 completion tokens */
+  totalCompletionTokens: number;
+  /** KV Cache 命中 tokens */
+  cacheHitTokens: number;
+  /** KV Cache 未命中 tokens */
+  cacheMissTokens: number;
+  /** Flash 模型调用次数 */
+  flashCalls: number;
+  /** Pro 模型调用次数 */
+  proCalls: number;
+  /** 工具调用次数 */
+  toolCalls: number;
+  /** 会话耗时 ms */
+  elapsedMs: number;
+  /** 预估成本 USD */
+  estimatedCostUsd: number;
 }
 
 /** 执行计划 */

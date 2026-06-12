@@ -59,8 +59,11 @@ describe('validateUrl — 安全边界', () => {
   });
 
   // ═══ metadata 防护 ═══
-  it('禁止云 metadata 地址', () => {
+  it('禁止 169.254.169.254', () => {
     expect(validateUrl('http://169.254.169.254/latest/meta-data').valid).toBe(false);
+  });
+  it('禁止 169.254.0.0/16 全段 (如 169.254.10.1)', () => {
+    expect(validateUrl('http://169.254.10.1/internal').valid).toBe(false);
   });
 
   // ═══ IPv6 防护 ═══

@@ -205,10 +205,20 @@ export async function runAgentLoop(
     console.log(`✅ (${Date.now() - scanStart}ms) → ${repoInfo.techStack.language}${repoInfo.techStack.framework ? ' + ' + repoInfo.techStack.framework : ''}`);
     console.log('');
 
-    // 5. 生成计划（流式输出）
+    // 5. 生成计划（流式输出）—— 审查/分析任务优先用 RepoMap
     const planStart = Date.now();
     process.stdout.write('📋 生成计划... ');
-    const planResult = await generatePlanWithStreaming(router.flash, repoInfo, taskDescription, repoSummary, streaming, readOnly ? 'readonly' : 'ask');
+    const isAuditTask = /审查|审计|分析.*架构|检查.*代码/i.test(taskDescription);
+    let richContext = repoSummary;
+    if (isAuditTask) {
+      try {
+        const { generateRepoMap, formatRepoMap } = await import('../context/repo-map.js');
+        const repoMap = generateRepoMap({ workingDir, maxDepth: 5, includeImports: true, includeExports: true });
+        richContext = repoSummary + '\n\n' + formatRepoMap(repoMap).slice(0, 8000); // RepoMap 前 8000 字符
+        console.log(`📊 RepoMap: ${repoMap.totalFiles}文件 ~${repoMap.estimatedTokens}tokens`);
+      } catch { /* 降级到基础 repoSummary */ }
+    }
+    const planResult = await generatePlanWithStreaming(router.flash, repoInfo, taskDescription, richContext, streaming, readOnly ? 'readonly' : 'ask');
     const plan = planResult.plan;
     const planMs = Date.now() - planStart;
     const stepsShown = planResult.shownCount;
@@ -301,7 +311,7 @@ export async function continueLoop(
   }
 
   // KV Cache 累计统计
-  let totalPrompt = 0, totalCache = 0, totalCompletion = 0;
+  let totalPrompt = 0, totalCache = 0, totalCompletion = 0, flashCalls = 0, proCalls = 0, toolCallCount = 0;
 
   try {
     while (stepIndex < maxSteps && !taskComplete) {
@@ -328,6 +338,8 @@ export async function continueLoop(
         '模型思考中',
       );
 
+      // 模型调用统计
+      if (model.modelName.includes('flash')) flashCalls++; else proCalls++;
       totalPrompt += response.usage.prompt_tokens;
       totalCache += response.usage.cache_hit_tokens ?? 0;
       totalCompletion += response.usage.completion_tokens;
@@ -337,11 +349,25 @@ export async function continueLoop(
       console.log(`📊 ${response.usage.prompt_tokens}+${response.usage.completion_tokens} tokens${cacheInfo}`);
 
       if (response.finish_reason === 'stop' && !response.tool_calls) {
-        const finalContent = response.content ?? '';
-        // 空响应兜底：Pro thinking 可能吞掉全部输出 → 追加提示让模型重试
+        let finalContent = response.content ?? '';
+        // 空响应兜底
         if (!finalContent.trim()) {
-          messages.push({ role: 'user', content: '你的上一条回复是空的。请基于已读取的文件输出分析结论，至少3句话。如果信息不足，说明还需要读哪些文件。' });
-          continue; // 再给模型一次机会
+          messages.push({ role: 'user', content: '你的上一条回复是空的。请基于已读取的文件输出分析结论。' });
+          continue;
+        }
+
+        // 后置门禁: 复用 report-validator 纯函数校验
+        const { validateReportAnchors, buildRetryPrompt } = await import('./report-validator.js');
+        const isReportLike = /审查|分析|报告|发现|问题|优化|安全|风险|架构|建议|审计/i.test(session.taskDescription) || finalContent.length > 500;
+        const alreadyRetried = session.interruptionReason === 'retry_gate';
+
+        if (isReportLike && !alreadyRetried) {
+          const v = validateReportAnchors(finalContent, session.knownFiles, { allowShortAnswer: true });
+          if (!v.valid) {
+            session.interruptionReason = 'retry_gate';
+            messages.push({ role: 'user', content: buildRetryPrompt(v) });
+            continue;
+          }
         }
         session.steps.push(createStep(stepIndex, 'final', finalContent));
         messages.push({ role: 'assistant', content: finalContent });
@@ -375,19 +401,38 @@ export async function continueLoop(
           // Phase 2: 详细报告（前缀稳定 → KV Cache 命中）
           process.stdout.write('📋 详细分析:\n');
           const phase2Start = Date.now();
-          messages.push({ role: 'user', content: '输出分析报告。格式要求：每个发现一行，格式为 "文件:行号 — 问题 — 证据 — 建议"。代码证据必须是真实片段。没有足够证据的发现不要输出。如果确实没有可验证的发现，直接说"未发现可验证的问题"。' });
-          let phase2Text = '';
-          try {
-            for await (const chunk of model.chatStream(messages, { temperature: 0.3, maxTokens: 2048, disableThinking: true })) {
-              process.stdout.write(chunk);
-              phase2Text += chunk;
+          messages.push({ role: 'user', content: '输出分析报告。\n\n🔴 优先修复 (P0:运行时故障/安全漏洞, 最多3条)\n🟡 短期改进 (P1:回归风险/技术债, 最多3条)\n🟢 长期优化 (P2:架构改进, 最多3条)\n⚪ 风格建议 (P3:代码规范, 最多2条)\n\n铁律1-事实锚定: 每条发现必须写 [真实文件:行号]。你只能引用已读到的文件路径。未读取的文件不准出现在报告中。不准编造扩展名(package.json不能写成package.js)。没有文件:行号的发现直接删除，不要输出。\n铁律2-验证: P0/P1必须写你的验证方式。推测的降P2+[未验证]。\n铁律3-归并: 同类合并(多文件as any→1条"类型安全债务")。\n铁律4-克制: 某级无内容写"无"。不列清单。\n\n格式: [文件:行号] 问题 → 风险 → 验证 → 建议' });
+          // Phase2 生成（先缓冲后校验——通过才展示，不合格不打印原文）
+          const { validateReportAnchors: v2, buildRetryPrompt: b2, buildDegradedReport: d2 } = await import('./report-validator.js');
+          let phase2Text = await streamPhase2Once();
+          let phase2Valid = v2(phase2Text, session.knownFiles, { allowShortAnswer: false });
+
+          if (!phase2Valid.valid && phase2Text.trim()) {
+            process.stdout.write('  ⚠️ 校验未通过，正在重写...\n');
+            messages.push({ role: 'user', content: b2(phase2Valid) });
+            phase2Text = await streamPhase2Once();
+            const retryV = v2(phase2Text, session.knownFiles, { allowShortAnswer: false });
+            if (!retryV.valid && phase2Text.trim()) {
+              console.log('⚠️ Phase2 两次校验不合格，输出降级报告');
+              phase2Text = d2(session.knownFiles, phase1Summary);
             }
-            process.stdout.write('\n');
-          } catch {
-            process.stdout.write(finalContent + '\n');
-            phase2Text = finalContent;
           }
-          // Phase2 空内容兜底：用原始 finalContent
+          // 展示最终输出（校验通过或降级后）
+          process.stdout.write(phase2Text + '\n');
+
+          async function streamPhase2Once(): Promise<string> {
+            let text = '';
+            try {
+              for await (const chunk of model.chatStream(messages, { temperature: 0.3, maxTokens: 2048, disableThinking: true })) {
+                text += chunk;
+              }
+            } catch {
+              text = finalContent;
+            }
+            return text;
+          }
+
+          // Phase2 空内容兜底
           if (!phase2Text.trim()) {
             console.log('⚠️ Phase2 无输出，回退到原始回答：');
             process.stdout.write(finalContent + '\n');
@@ -448,14 +493,16 @@ export async function continueLoop(
         const toolResults: ToolExecutionResult[] = [];
         const execStart = Date.now();
 
+        toolCallCount += toolCallsToExecute.length;
         if (toolCallsToExecute.length > 1) {
           console.log(`⚡ 并行执行 ${toolCallsToExecute.length} 个工具...`);
           const allResults = await Promise.all(toolCallsToExecute.map(async (tc) => {
             const fn = tc.function;
-            let args: Record<string, unknown>;
-            try { args = JSON.parse(fn.arguments); } catch { args = {}; }
-            const result = await executeTool(fn.name, args, tools, toolCtx);
-            return { tc, result, target: formatToolTarget(fn.name, args) };
+            const parsed = parseToolArgs(fn);
+            const result = parsed.ok
+              ? await executeTool(fn.name, parsed.args, tools, toolCtx)
+              : { success: false, content: '', error: `工具参数 JSON 解析失败: ${parsed.error}` };
+            return { tc, result, target: formatToolTarget(fn.name, parsed.ok ? parsed.args : {}) };
           }));
           for (const { tc, result, target } of allResults) {
             toolResults.push(result);
@@ -466,9 +513,11 @@ export async function continueLoop(
         } else if (toolCallsToExecute.length === 1) {
           const tc = toolCallsToExecute[0];
           const fn = tc.function;
-          let args: Record<string, unknown>;
-          try { args = JSON.parse(fn.arguments); } catch { args = {}; }
-          const result = await executeTool(fn.name, args, tools, toolCtx);
+          const parsed = parseToolArgs(fn);
+          const result = parsed.ok
+            ? await executeTool(fn.name, parsed.args, tools, toolCtx)
+            : { success: false, content: '', error: `工具参数 JSON 解析失败: ${parsed.error}` };
+          const args = parsed.ok ? parsed.args : {};
           toolResults.push(result);
           console.log(`  ${result.success ? '✅' : '❌'} ${fn.name} ${formatToolTarget(fn.name, args)} (${result.content.length} 字符)${!result.success ? ` → ${result.error}` : ''}`);
         }
@@ -477,6 +526,20 @@ export async function continueLoop(
         step.toolCalls = toolCallsToExecute;
         step.toolResults = toolResults;
         session.steps.push(step);
+
+        // 同步已读文件到 session.knownFiles（报告校验用）
+        for (let i = 0; i < toolCallsToExecute.length; i++) {
+          const tc = toolCallsToExecute[i];
+          const result = toolResults[i];
+          if (!result?.success) continue;
+          const files = extractReadTargets(tc);
+          for (const f of files) {
+            const normalized = f.replace(/\\/g, '/');
+            if (!session.knownFiles.some(k => k.replace(/\\/g, '/') === normalized)) {
+              session.knownFiles.push(f);
+            }
+          }
+        }
 
         // No-progress 检测：仅当连续多轮"只读同样的文件"时才触发
         // 如果 Agent 换了策略（执行命令、搜索新关键词、列出新目录），说明在积极探索，不算停滞
@@ -524,19 +587,40 @@ export async function continueLoop(
       }
     }
 
+    // 0工具调用+0执行步骤 → 实际未执行, 必须先判定再持久化
+    if (toolCallCount === 0 && session.steps.filter(s => s.type !== 'planning').length === 0) {
+      console.log(`⚠️ 任务未实际执行 (0工具调用, 0执行步骤)`);
+      taskComplete = false;
+    }
+
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-    const summary = taskComplete
+    let summary = taskComplete
       ? `任务分析完成 (${totalTime}s, ${stepIndex} 步)`
-      : `达到最大步骤数 (${maxSteps})，任务可能未完全完成 (${totalTime}s)`;
+      : `任务未能执行。可能原因: 路由错误或工具不可用。建议重试或简化任务。`;
 
     session.completed = taskComplete;
     session.summary = summary;
     await memory.saveSession(session);
 
     const cacheRate = totalPrompt > 0 ? ((totalCache / totalPrompt) * 100).toFixed(0) : '0';
+    const cost = estimateCost(totalPrompt, totalCache, totalCompletion, flashCalls, proCalls);
+    session.stats = {
+      totalPromptTokens: totalPrompt,
+      totalCompletionTokens: totalCompletion,
+      cacheHitTokens: totalCache,
+      cacheMissTokens: totalPrompt - totalCache,
+      flashCalls,
+      proCalls,
+      toolCalls: toolCallCount,
+      elapsedMs: Date.now() - startTime,
+      estimatedCostUsd: cost,
+    };
+
     console.log(`\n📊 KV Cache: ${cacheRate}% 命中 (${totalCache}/${totalPrompt} prompt tokens) | 总输出: ${totalCompletion} tokens`);
+    console.log(`💰 预估成本: $${cost.toFixed(4)} | Flash×${flashCalls} Pro×${proCalls} | 工具×${toolCallCount}`);
     console.log(`📝 会话已保存: ${session.id}  ⏱ ${totalTime}s`);
 
+    await memory.saveSession(session);
     return { session, success: taskComplete, summary };
   } catch (e) {
     const errorMsg = String(e);
@@ -736,4 +820,72 @@ function formatPlan(plan: ExecutionPlan): string {
   }
 
   return lines.join('\n');
+}
+
+// ═══ Cost Estimator ═══
+
+// DeepSeek V4 定价 (per 1M tokens, USD)
+const PRICING = {
+  pro: { inputCacheMiss: 0.55, inputCacheHit: 0.14, output: 2.19 },
+  flash: { inputCacheMiss: 0.14, inputCacheHit: 0.04, output: 0.55 },
+};
+
+function estimateCost(
+  totalPrompt: number, totalCache: number, totalCompletion: number,
+  flashCalls: number, proCalls: number,
+): number {
+  // 简化估算: 按 Pro/Flash 调用比例分摊
+  const totalCalls = flashCalls + proCalls || 1;
+  const proRatio = proCalls / totalCalls;
+  const flashRatio = flashCalls / totalCalls;
+
+  const cacheMiss = totalPrompt - totalCache;
+
+  // Pro 分摊
+  const proCacheMiss = cacheMiss * proRatio;
+  const proCacheHit = totalCache * proRatio;
+  const proOutput = totalCompletion * proRatio;
+
+  // Flash 分摊
+  const flashCacheMiss = cacheMiss * flashRatio;
+  const flashCacheHit = totalCache * flashRatio;
+  const flashOutput = totalCompletion * flashRatio;
+
+  const cost =
+    (proCacheMiss / 1_000_000) * PRICING.pro.inputCacheMiss +
+    (proCacheHit / 1_000_000) * PRICING.pro.inputCacheHit +
+    (proOutput / 1_000_000) * PRICING.pro.output +
+    (flashCacheMiss / 1_000_000) * PRICING.flash.inputCacheMiss +
+    (flashCacheHit / 1_000_000) * PRICING.flash.inputCacheHit +
+    (flashOutput / 1_000_000) * PRICING.flash.output;
+
+  return cost;
+}
+
+/** 安全解析工具参数——JSON损坏时返回错误而不执行 */
+function parseToolArgs(fn: { name: string; arguments: string }): { ok: true; args: Record<string, unknown> } | { ok: false; error: string } {
+  try {
+    return { ok: true, args: JSON.parse(fn.arguments) };
+  } catch {
+    return { ok: false, error: `${fn.name} 参数 JSON 无效` };
+  }
+}
+
+/** 从 ToolCall 提取读取的文件路径 */
+function extractReadTargets(tc: import('deepseek-code-shared').ToolCall): string[] {
+  const name = tc.function.name;
+  const parsed = parseToolArgs(tc.function);
+  if (!parsed.ok) return [];
+  const args = parsed.args;
+  switch (name) {
+    case 'read_file':
+    case 'read_file_range':
+      return args.filePath ? [args.filePath as string] : [];
+    case 'read_file_batch':
+      if (Array.isArray(args.filePaths)) return args.filePaths as string[];
+      if (Array.isArray(args.files)) return args.files as string[];
+      return [];
+    default:
+      return [];
+  }
 }

@@ -13,6 +13,8 @@ export type { ToolContext, ToolExecutors } from './tools/index.js';
 
 // Context
 export { scanRepo, buildRepoSummary, FileMemoryStore, InMemoryStore, createStep, buildPrompt, compressSessionForResume, buildGlobalPrefix, buildRuntimePrefix, buildProjectPrefix, stableStringify, saveInteractiveState, loadInteractiveState, clearInteractiveState, buildLastAgentResult } from './context/index.js';
+export { generateRepoMap, formatRepoMap } from './context/repo-map.js';
+export type { RepoMap, RepoMapOptions, DirNode } from './context/repo-map.js';
 export type { ScanOptions, MemoryStore, PromptLayers, PromptHashes, PendingAction, InteractiveSessionState } from './context/index.js';
 
 // Agent

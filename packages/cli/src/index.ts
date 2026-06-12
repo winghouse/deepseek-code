@@ -118,7 +118,9 @@ program
         return;
       }
       // Execution Dispatcher: debug_task → Repair Pipeline（非 diff 类）
-      if (route.intent === 'debug_task') {
+      // 硬门槛: 必须包含错误上下文(TS错误码/堆栈/报错/文件:行号)才进repair, 否则降级agent
+      const hasErrorContext = /TS\d+|报错|异常|失败|堆栈|stack trace|\.(ts|tsx|js):\d+:\d+/.test(task);
+      if (route.intent === 'debug_task' && hasErrorContext) {
         const { runRepairPipeline } = await import('deepseek-code-core');
         console.log('🔧 Repair Pipeline\n');
         const proClient = apiKey ? createProClient(apiKey, baseUrl) : undefined;
@@ -362,8 +364,24 @@ program
         let toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
         let outputText = '';
 
-        // 1. 路由: mock注入 或 live-router 或 默认 heuristic
-        if (tc.mockLLMRouter) {
+        // 1. 路由: live-router(真实LLM) > mock注入(离线) > 默认heuristic
+        if ((liveRouter || liveTask) && apiKey) {
+          // live 模式: 真实调用 LLM Router (忽略 mockLLMRouter)
+          try {
+            routeResult = await routeInput(tc.task, ctx, {
+              async chatJson(prompt: string) {
+                const res = await fetch(`${config.baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+                  body: JSON.stringify({ model: 'deepseek-v4-flash', messages: [{ role: 'user', content: prompt }], max_tokens: 256, temperature: 0, stream: false, thinking: { type: 'disabled' } }),
+                  signal: AbortSignal.timeout(10000),
+                });
+                const data = await res.json() as any;
+                return data.choices?.[0]?.message?.content ?? '{}';
+              },
+            });
+          } catch { routeResult = { intent: 'unknown', execution: 'agent_readonly', shouldScanProject: true }; }
+        } else if (tc.mockLLMRouter) {
           // 离线 mock 模式: 直接注入预期 RouteDecision, 跳过真实 LLM
           routeResult = {
             intent: tc.mockLLMRouter.intent || 'unknown',
@@ -554,9 +572,50 @@ program
 
 // Context Stats
 program
-  .command('context [action]')
-  .description('显示上下文缓存状态 (context / context stats)')
-  .action(async () => {
+  .command('context [action] [target]')
+  .description('上下文管理 (stats / show <id> / 默认prefix)')
+  .action(async (action: string | undefined, target: string | undefined) => {
+    if (action === 'stats' || action === 'show') {
+      const { FileMemoryStore } = await import('deepseek-code-core');
+      const memory = new FileMemoryStore(process.cwd());
+
+      if (action === 'stats') {
+        const sessions = await memory.listSessions();
+        const recent = sessions.filter(s => s.stats).slice(0, 10);
+        if (recent.length === 0) { console.log('📊 暂无会话统计数据'); return; }
+        console.log('═══════════════════════════════════════');
+        console.log('  dscode Context Stats — 最近会话');
+        console.log('═══════════════════════════════════════\n');
+        for (const s of recent.slice(0, 5)) {
+          const st = s.stats!;
+          const date = new Date(s.createdAt).toLocaleString('zh-CN');
+          const cr = st.totalPromptTokens > 0 ? ((st.cacheHitTokens / st.totalPromptTokens) * 100).toFixed(0) : '0';
+          console.log(`📋 ${(s.taskDescription || '').slice(0, 50)}`);
+          console.log(`   ${date}  ⏱ ${(st.elapsedMs/1000).toFixed(0)}s  💰 $${st.estimatedCostUsd.toFixed(4)}`);
+          console.log(`   Prompt:${(st.totalPromptTokens/1000).toFixed(1)}K | Out:${(st.totalCompletionTokens/1000).toFixed(1)}K | KV:${cr}% | Flash×${st.flashCalls} Pro×${st.proCalls} 工具×${st.toolCalls}`);
+          console.log('');
+        }
+        const tc = recent.reduce((s: number, x: any) => s + (x.stats?.estimatedCostUsd||0), 0);
+        const tt = recent.reduce((s: number, x: any) => s + (x.stats?.totalPromptTokens||0) + (x.stats?.totalCompletionTokens||0), 0);
+        const ac = Math.round(recent.reduce((s: number, x: any) => {
+          const st = x.stats!; return s + (st.totalPromptTokens > 0 ? st.cacheHitTokens / st.totalPromptTokens : 0);
+        }, 0) / recent.length * 100);
+        console.log(`📊 ${recent.length}会话 | 💰总$${tc.toFixed(4)} | 📊${(tt/1000).toFixed(0)}K tokens | 🔑均${ac}%命中`);
+        return;
+      }
+
+      if (action === 'show' && target) {
+        const s = await memory.loadSession(target);
+        if (!s?.stats) { console.log('无统计数据'); return; }
+        const st = s.stats!;
+        const cr = st.totalPromptTokens > 0 ? ((st.cacheHitTokens / st.totalPromptTokens) * 100).toFixed(0) : '0';
+        console.log(`📋 ${s.taskDescription.slice(0, 60)}`);
+        console.log(`⏱ ${(st.elapsedMs/1000).toFixed(0)}s | 💰 $${st.estimatedCostUsd.toFixed(6)}`);
+        console.log(`Prompt:${(st.totalPromptTokens/1000).toFixed(1)}K Out:${(st.totalCompletionTokens/1000).toFixed(1)}K Hit:${(st.cacheHitTokens/1000).toFixed(1)}K(${cr}%) Miss:${(st.cacheMissTokens/1000).toFixed(1)}K`);
+        console.log(`Flash×${st.flashCalls} Pro×${st.proCalls} 工具×${st.toolCalls}`);
+        return;
+      }
+    }
     const { buildGlobalPrefix, buildRuntimePrefix } = await import('deepseek-code-core');
     const crypto = await import('node:crypto');
     const hash = (s: string) => crypto.createHash('md5').update(s).digest('hex').slice(0, 8);
@@ -789,6 +848,102 @@ program
     if (mode === 'readonly' && !options.dryRun) {
       console.log('');
       console.log('💡 添加 --write 参数执行实际修复');
+    }
+  });
+
+// 仓库级分析 — 利用 DeepSeek V4 1M 上下文做全仓库理解
+program
+  .command('analyze [query]')
+  .description('仓库级深度分析 (生成 RepoMap + 1M上下文综合判断)')
+  .option('-d, --depth <n>', '扫描深度', '6')
+  .option('--no-imports', '跳过 import 图解析')
+  .option('-m, --model <model>', '模型选择', 'pro')
+  .option('--tokens <n>', '最大输出 tokens', '4096')
+  .action(async (query: string | undefined, options: Record<string, string>) => {
+    const { generateRepoMap, formatRepoMap } = await import('deepseek-code-core');
+    const workingDir = process.cwd();
+
+    console.log('🔬 生成仓库地图...');
+    const startTime = Date.now();
+    const map = generateRepoMap({
+      workingDir,
+      maxDepth: parseInt(options.depth as string, 10) || 6,
+      includeImports: (options.imports as unknown as boolean) !== false,
+      includeExports: true,
+    });
+    const mapText = formatRepoMap(map);
+    console.log(`📊 ${map.totalFiles} 文件, ~${map.estimatedTokens} tokens (${Date.now() - startTime}ms)\n`);
+
+    const config = loadConfig();
+    const apiKey = config.apiKey || process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      console.log('⚠️ 需要 DEEPSEEK_API_KEY 才能进行 LLM 分析。RepoMap 已生成：');
+      console.log(mapText.slice(0, 2000));
+      return;
+    }
+
+    const model = options.model === 'flash' ? 'deepseek-v4-flash' : 'deepseek-v4-pro';
+    const prompt = query
+      ? `基于以下仓库地图，回答: ${query}\n\n${mapText}`
+      : `基于以下仓库地图，做一次全面的架构分析。包括: 1)整体架构设计 2)模块职责和边界 3)关键数据流 4)值得优化的地方 5)安全/质量风险点。\n\n${mapText}`;
+
+    console.log(`🧠 使用 ${model} 进行仓库级分析...\n`);
+    const analysisStart = Date.now();
+
+    try {
+      const res = await fetch(`${config.baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: '你是一个资深软件架构师。基于仓库地图进行深度分析。每个发现标注具体的文件路径和行号。只输出基于地图证据的结论，不要编造。' },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: parseInt(options.tokens as string, 10) || 4096,
+          temperature: 0.3,
+          stream: true,
+          stream_options: { include_usage: true },
+          thinking: { type: 'disabled' },
+        }),
+        signal: AbortSignal.timeout(300_000),
+      });
+
+      if (!res.ok) { console.log(`❌ API错误: ${res.status}`); return; }
+
+      // 流式输出
+      const reader = res.body?.getReader();
+      if (!reader) { console.log('❌ 无响应流'); return; }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let totalTokens = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === 'data: [DONE]') continue;
+          if (!trimmed.startsWith('data: ')) continue;
+          try {
+            const json = JSON.parse(trimmed.slice(6));
+            const content = json.choices?.[0]?.delta?.content;
+            if (content) process.stdout.write(content);
+            if (json.usage) totalTokens = json.usage.total_tokens || totalTokens;
+          } catch { /* skip */ }
+        }
+      }
+      process.stdout.write('\n');
+
+      const elapsed = ((Date.now() - analysisStart) / 1000).toFixed(1);
+      console.log(`\n⏱ 分析耗时: ${elapsed}s | 仓库地图: ${map.estimatedTokens} tokens | 总: ~${totalTokens} tokens | 上下文利用率: ${((map.estimatedTokens / 1000000) * 100).toFixed(1)}%`);
+
+    } catch (err) {
+      console.log(`❌ 分析失败: ${(err as Error).message}`);
     }
   });
 
@@ -1152,11 +1307,16 @@ async function interactiveMode(
       rl.prompt();
       return;
     }
-    if (input === '/plan' || input === '/edit' || input === '/auto') {
+    // 模式切换: /命令 或 自然语言
+    const modeSwitch: Record<string, 'plan' | 'edit' | 'auto'> = {};
+    if (/\/plan|计划模式|只读模式|进入.*计划|切换到?.*计划|agent.*模式|读.*模式/i.test(input) && !/编辑|自主|自动|写/i.test(input)) modeSwitch['plan'] = 'plan';
+    if (/\/edit|编辑模式|写.*模式|进入.*编辑|切换到?.*编辑|读写.*模式|确认.*模式/i.test(input)) modeSwitch['edit'] = 'edit';
+    if (/\/auto|自主模式|自动模式|全自动|进入.*自主|切换到?.*自主/i.test(input)) modeSwitch['auto'] = 'auto';
+
+    const switchTo = modeSwitch['plan'] || modeSwitch['edit'] || modeSwitch['auto'];
+    if (switchTo) {
       const prev = currentMode;
-      if (input === '/plan') currentMode = 'plan';
-      else if (input === '/edit') currentMode = 'edit';
-      else currentMode = 'auto';
+      currentMode = switchTo;
       if (prev !== currentMode) {
         sharedMessages = null; lastAgentResult = null; pendingAction = undefined; conversationFocus = undefined;
         const labels: Record<string, string> = { plan: '📋 计划(只读)', edit: '✏️ 编辑(审批)', auto: '🚀 自主(全自动)' };
@@ -1283,7 +1443,9 @@ async function interactiveMode(
       return;
     }
     // Execution Dispatcher: debug_task → Repair Pipeline（非 diff 类）
-    if (route.intent === 'debug_task') {
+    // 硬门槛: 必须包含错误上下文才进repair, 否则降级agent
+    const hasErrorCtx = /TS\d+|报错|异常|失败|堆栈|stack trace|\.(ts|tsx|js):\d+:\d+/.test(input);
+    if (route.intent === 'debug_task' && hasErrorCtx) {
       const { runRepairPipeline } = await import('deepseek-code-core');
       const proClient = apiKey ? createProClient(apiKey, baseUrl) : undefined;
       const result = await runRepairPipeline({ workingDir, taskDescription: input, mode: routerMode, proClient, onProgress: (s) => console.log(`  ⏳ ${s}`) });
@@ -1330,7 +1492,7 @@ async function interactiveMode(
         // 提取输入中的 URL，保存到 findings 以支持 URL 追问路由
         const inputUrls = [...input.matchAll(/https?:\/\/\S+/g)].map((m) => m[0]);
         lastAgentResult = {
-          task: input, intent: 'code_task', execution: 'agent_readonly',
+          task: input, intent: route.intent, execution: route.execution,
           summary: finalOutput.slice(0, 300),
           filesRead: inputUrls,
           toolsUsed: [`${toolCallCount}次工具调用`],
@@ -1620,7 +1782,7 @@ async function handleLlmDirect(
     : [];
 
   const messages = [
-    { role: 'system' as const, content: `你是 DeepSeek Code CLI 的 AI 助手。\n${facts}\n用自然友好的语气回答。\n\n约束：不能声称会读取文件、执行命令或调用工具。不能输出 \`\`\`tool 代码块。不能假装你执行了什么操作。如果你需要读取项目文件，请让用户确认是否进入 Agent 模式。` },
+    { role: 'system' as const, content: `你是 DeepSeek Code CLI 的 AI 助手。\n${facts}\n用自然友好的语气回答。\n\n约束：不能声称会读取文件、执行命令或调用工具。不能输出工具调用代码块。不能假装执行了操作。如果你的回答需要读项目文件，告诉用户输入 /plan 进入计划模式或 /edit 进入编辑模式。模式切换命令: /plan(只读分析) /edit(写操作需审批) /auto(全自动)。` },
     ...(summaries ?? []).map((s) => ({ role: 'system' as const, content: s })),
     ...olderSummary,
     ...recent,

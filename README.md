@@ -5,8 +5,8 @@
 > 🏗️ **本项目 100% 由 DeepSeek V4 构建**——从架构设计到代码实现，全部由 AI 完成
 
 [![CI](https://github.com/deepseek-code/deepseek-code/actions/workflows/ci.yml/badge.svg)](https://github.com/deepseek-code/deepseek-code/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-278%20passed-green)
-![Eval](https://img.shields.io/badge/eval-40%2F40%20passed-green)
+![Tests](https://img.shields.io/badge/tests-330%20passed-green)
+![Eval](https://img.shields.io/badge/eval-26%2F26%20passed-green)
 
 ## 定位
 
@@ -107,9 +107,9 @@ Safety Layer      ← Route → Executor → Path → Env → Budget (5 layers)
 ## 评测体系
 
 ```bash
-pnpm test              # 单元测试 (278)
-pnpm test:eval         # 路由评测 (40)
-pnpm test:all          # 全部 (318)
+pnpm test              # 单元测试 (330)
+pnpm test:eval         # Eval Task (26 mock)
+pnpm test:all          # 全部 (330 + 26)
 ```
 
 | 套件 | 用例 | 通过 |

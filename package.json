@@ -28,8 +28,8 @@
     "clean": "pnpm -r clean",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:eval": "vitest run .evals/",
-    "test:all": "vitest run && vitest run .evals/",
+    "test:eval": "pnpm build && node packages/cli/dist/index.js eval task",
+    "test:all": "pnpm build && vitest run && node packages/cli/dist/index.js eval task",
     "cli": "pnpm build && node packages/cli/dist/index.js"
   },
   "devDependencies": {

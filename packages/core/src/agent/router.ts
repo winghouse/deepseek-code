@@ -223,16 +223,18 @@ export async function llmRouter(
   try {
     const raw = await client.chatJson(
       `你是意图路由器。根据输入和上下文输出 JSON，不要输出其他内容。\n` +
-      `intent: command_help|command_exit|command_clear|command_status|command_model|command_sessions|command_resume|capability_question|small_talk|explain_project|debug_task|code_task|test_task|config_task|conversation_summary|previous_result_question|continue_previous_task|webpage_summary|webpage_content_question|external_doc_question|url_safety_check|unknown\n` +
+      `intent: command_help|command_exit|command_clear|command_status|command_model|command_sessions|command_resume|capability_question|small_talk|explain_project|audit_task|debug_task|code_task|test_task|config_task|conversation_summary|previous_result_question|continue_previous_task|webpage_summary|webpage_content_question|external_doc_question|url_safety_check|unknown\n` +
       `execution: local_action|llm_direct|llm_direct_limited|agent_readonly|agent_plan|agent_execute|url_fetch_pipeline\n` +
       `analysisDepth: none|overview|standard|deep\n` +
-      `\n先判断 target，再判断 intent：\n` +
+      `\n关键路由规则：\n` +
+      `- audit_task = 审查项目/代码质量/优化建议/安全漏洞/技术债/CI配置/测试覆盖。execution=agent_readonly。\n` +
+      `- explain_project = 解释项目结构/架构分析/文件说明。execution=agent_readonly。\n` +
+      `- debug_task = 修复bug/类型错误/报错/测试失败/定位排查。execution=agent_readonly。只有输入包含具体错误(TS错误码/堆栈/报错信息)才用debug_task。\n` +
+      `- code_task = 开发新功能/写代码/重构/生成文件。execution=agent_readonly 或 agent_plan。\n` +
       `- 如果 pendingAction 存在且用户说"继续"/"执行"/"接着": intent=continue_previous_task, execution=agent_plan\n` +
-      `- 如果 input 包含 URL 或 target.type=url: intent=webpage_summary/webpage_content_question, execution=url_fetch_pipeline, shouldScanProject=false\n` +
-      `- 如果 input 引用上轮 URL("这个网页"/"上面的链接")且 lastExternalResource 存在: target.type=url(source=last_external_resource), execution=url_fetch_pipeline\n` +
-      `- 只有在 target.type=workspace 时才能路由到 explain_project/debug_task/code_task\n` +
-      `- 能力询问/纯寒暄 → local_action 或 llm_direct, shouldScanProject=false\n` +
-      `- 如果没有 web_fetch 能力且 target.type=url: execution=llm_direct_limited, needsClarification=true\n` +
+      `- 如果 input 包含 URL 或 target.type=url: intent=webpage_summary, execution=url_fetch_pipeline, shouldScanProject=false\n` +
+      `- previous_result_question 仅用于纯记忆型提问("上面说了什么"/"刚才的结论是什么")。如果用户要求核实/对比/检查是否已修复/列出已修改项，这是 audit_task 需要读代码验证, 不是 previous_result_question。execution=agent_readonly。\n` +
+      `- 能力询问/纯寒暄 → small_talk 或 capability_question, llm_direct, shouldScanProject=false\n` +
       `\n上下文: ${prompt}\n\n输出JSON:`,
     );
 
@@ -257,14 +259,21 @@ export async function llmRouter(
 }
 
 function fallbackClarification(input: string): RouteDecision {
+  // 无 LLM Router 时的基础探测——不给具体 intent, 但给 Agent 工具
+  const isAuditLike = /审查|优化|代码质量|安全漏洞|技术债|架构|分析.*项目/i.test(input);
+  const isRepairLike = /TS\d+|报错|修复|类型错误|编译失败|测试失败|\.(ts|tsx):\d+/.test(input);
+  const isExplainLike = /解释|说明|介绍|是什么|怎么工作/i.test(input);
+  const isCiLike = /CI|ci|测试.*失败|会不会.*失败|构建|pipeline|workflow.*fail|github action/i.test(input);
+  const isCompareVerify = /哪些.*已.*修复|哪些.*已.*改|对比.*之前|审查对比|检查.*是否.*修|列出.*已.*修改/i.test(input);
+
   return {
-    intent: 'unknown',
-    execution: 'agent_readonly',  // 默认进 Agent——有工具总比没工具好
+    intent: isRepairLike ? 'debug_task' : isAuditLike ? 'audit_task' : isCiLike ? 'audit_task' : isCompareVerify ? 'audit_task' : isExplainLike ? 'explain_project' : 'unknown',
+    execution: 'agent_readonly',
     shouldScanProject: true,
     allowedTools: [],
     needsClarification: false,
-    confidence: 0.3,
-    reason: `LLM Router 不可用 → agent_readonly`,
+    confidence: 0.35,
+    reason: `LLM Router 不可用 → ${isRepairLike ? 'debug' : isAuditLike || isCiLike || isCompareVerify ? 'audit' : isExplainLike ? 'explain' : 'agent_readonly'}`,
   };
 }
 

@@ -381,12 +381,20 @@ export async function runRepairPipeline(
     rootCause ? `根因已确定 (置信度: ${(rootCauseConfidence * 100).toFixed(0)}%)` : '根因未确定，需更多信息',
   ].filter(Boolean).join(' | ');
 
+  // 修补补丁生成：当前只做错误定位+根因分析，不自动生成补丁。
+  // 自动补丁需要验证闭环（生成→应用→typecheck→回滚），在完成前返回 undefined 比返回假补丁更安全。
+  // 用户可在只读模式看到诊断结论，通过 --write + autofix 走完整闭环后再产出可用补丁。
+  let patchProposal: string | undefined;
+
+  // 空分析判定: 文件0+根因空 → 不是成功, 不要显示"完成"
+  const actuallyAnalyzed = filesExamined.length > 0 || !!rootCause;
   const result: RepairResult = {
-    success: true,
-    summary,
+    success: actuallyAnalyzed,
+    summary: actuallyAnalyzed ? summary : '无法定位问题。建议提供更具体的错误信息或文件路径重试。',
     filesExamined,
     rootCause,
     rootCauseConfidence,
+    patchProposal,
     suggestedFix,
     errorLocation: errors[0],
     elapsedMs: Date.now() - start,

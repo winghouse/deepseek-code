@@ -880,5 +880,25 @@
       "needsLLM": true
     },
     "category": "context"
+  },
+  {
+    "input": "我有一部分已经修复，你列出哪些是我已经修复的",
+    "expected": {
+      "intent": "audit_task",
+      "execution": "agent_readonly",
+      "scanProject": true,
+      "needsLLM": false
+    },
+    "category": "verify"
+  },
+  {
+    "input": "直接审查对比吧，这个没有风险",
+    "expected": {
+      "intent": "audit_task",
+      "execution": "agent_readonly",
+      "scanProject": true,
+      "needsLLM": false
+    },
+    "category": "verify"
   }
 ]

@@ -340,13 +340,13 @@ const result: number = add("1", "2");
     expect(result.suggestedFix).toContain('读写');
   });
 
-  it('无匹配文件时仍返回成功', async () => {
+  it('无匹配文件时返回失败', async () => {
     const result = await runRepairPipeline({
       workingDir: tmpDir,
       taskDescription: '代码跑不起来了',
       mode: 'readonly',
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.filesExamined.length).toBe(0);
   });
 

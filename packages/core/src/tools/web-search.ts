@@ -112,9 +112,9 @@ export function validateUrl(rawUrl: string): UrlValidation {
     }
   }
 
-  // 规则 5: 禁止 metadata 地址
-  if (hostname === '169.254.169.254' || hostname === '[169.254.169.254]') {
-    return { valid: false, sanitizedUrl: '', error: '禁止访问云元数据地址' };
+  // 规则 5: 禁止 metadata 地址 (169.254.0.0/16 全段)
+  if (/^\[?169\.254\.\d+\.\d+\]?$/.test(hostname)) {
+    return { valid: false, sanitizedUrl: '', error: '禁止访问云元数据地址 (169.254.0.0/16)' };
   }
 
   return { valid: true, sanitizedUrl: parsed.href };
@@ -203,8 +203,8 @@ async function searchSogou(
     }
 
     return results;
-  } catch {
-    return [];
+  } catch (e) {
+    throw e; // 让外层 executeWebSearch 的 errors[] 统一汇总
   } finally {
     clearTimeout(timer);
   }
@@ -252,8 +252,8 @@ async function searchSerper(
       snippet: item.snippet ?? '',
       relevance: 1 - i / maxResults,
     }));
-  } catch {
-    return [];
+  } catch (e) {
+    throw e; // 让外层 executeWebSearch 的 errors[] 统一汇总
   } finally {
     clearTimeout(timer);
   }
@@ -313,8 +313,8 @@ async function searchBaidu(
     }
 
     return results;
-  } catch {
-    return [];
+  } catch (e) {
+    throw e; // 让外层 executeWebSearch 的 errors[] 统一汇总
   } finally {
     clearTimeout(timer);
   }
@@ -443,33 +443,33 @@ export async function executeWebSearch(
   }
 
   // 1. Serper API (Google 质量，需 SERPER_API_KEY)
+  const errors: string[] = [];
   try {
     const results = await searchSerper(query.trim(), merged);
-    if (results.length > 0) {
-      return makeResult(true, query, results, start, 'serper');
-    }
-  } catch { /* fall through */ }
+    if (results.length > 0) return makeResult(true, query, results, start, 'serper');
+  } catch (e) { errors.push(`Serper: ${e}`); }
 
-  // 2. 搜狗搜索 (免费，境内可用)
+  // 2. 搜狗搜索
   try {
     const results = await searchSogou(query.trim(), merged);
     if (results.length > 0) return makeResult(true, query, results, start, 'sogou');
-  } catch { }
+  } catch (e) { errors.push(`Sogou: ${e}`); }
 
-  // 3. 百度搜索 (免费，境内最常用)
+  // 3. 百度搜索
   try {
     const results = await searchBaidu(query.trim(), merged);
     if (results.length > 0) return makeResult(true, query, results, start, 'baidu');
-  } catch { }
+  } catch (e) { errors.push(`Baidu: ${e}`); }
 
-  // 4. Bing 搜索 (国际兜底)
+  // 4. Bing 搜索
   try {
     const results = await searchBing(query.trim(), merged);
     if (results.length > 0) return makeResult(true, query, results, start, 'bing');
-    return makeResult(false, query, results, start, 'bing', '所有搜索引擎均无结果');
+    const errDetail = errors.length > 0 ? ` (后端错误: ${errors.join('; ')})` : '';
+    return makeResult(false, query, results, start, 'bing', `所有搜索引擎均无结果${errDetail}`);
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return makeResult(false, query, [], start, 'duckduckgo', `搜索不可用: ${message}`);
+    errors.push(`Bing: ${e}`);
+    return makeResult(false, query, [], start, 'bing', `搜索不可用: ${errors.join('; ')}`);
   }
 }
 
@@ -539,10 +539,15 @@ export async function executeWebFetch(
       content: pageResult.content,
     });
 
-    // 检测下一页
+    // 检测下一页——必须走 validateUrl 防止 SSRF 通过 HTML 内分页链接绕过
     const nextUrl = detectNextPageUrl(pageResult.html, currentUrl);
     if (!nextUrl) break;
-    currentUrl = nextUrl;
+    const nextCheck = validateUrl(nextUrl);
+    if (!nextCheck.valid) {
+      console.log(`⚠️ 分页链接被拦截: ${nextUrl} — ${nextCheck.error}`);
+      break;
+    }
+    currentUrl = nextCheck.sanitizedUrl;
   }
 
   if (pages.length === 0) {

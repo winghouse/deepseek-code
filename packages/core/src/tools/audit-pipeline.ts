@@ -159,35 +159,37 @@ export async function runAuditPipeline(
       const alreadyFoundSummary = alreadyFound.map((f) => `- [${f.verificationStatus}] ${f.title}: ${f.claim}`).join('\n');
 
       const flashPrompt = [
-        '你是一个资深代码审查专家。请对以下项目做**全面审查**，按不同维度分别提出发现。',
-        '输出 JSON 数组，每个元素有 title, claim, category, severity 字段。',
+        '你是一个资深代码审查专家。对项目做全面审查，按维度提出发现。',
+        '输出 JSON 数组，每个元素有 title, claim, category, severity, verified 字段。',
         'category: config|test|type-safety|dead-code|docs|security|cross-platform|architecture|maintainability|error-handling|performance|dependency',
         'severity: low|medium|high',
+        'verified: true=你实际读到文件确认过 | false=基于项目信息推测(会被降级)',
+        '',
+        '铁律: 如果你没有实际读到相关文件，verified 必须为 false。severity=high 的发现必须 verified=true。',
         '',
         '⚠️ 以下问题已被确定性检查发现，严禁重复：',
         alreadyFoundSummary || '(无)',
         '',
         '请覆盖以下维度，每个维度 1-3 条：',
-        '1. 架构 (architecture): 模块划分是否合理？循环依赖？单文件过大？',
-        '2. 安全 (security): 密钥泄露？注入风险？权限缺失？',
-        '3. 可维护性 (maintainability): 命名规范？注释？重复代码？',
-        '4. 测试 (test): 测试覆盖？边界情况？mock 使用？',
-        '5. 错误处理 (error-handling): try-catch？错误传播？日志？',
-        '6. 性能 (performance): N+1 查询？大文件读取？内存泄漏？',
-        '7. 依赖 (dependency): 未使用的包？版本锁定？过时依赖？',
+        '1. 架构 2. 安全 3. 可维护性 4. 测试 5. 错误处理 6. 性能 7. 依赖',
         '',
         '项目信息: ' + JSON.stringify(repoSummary),
       ].join('\n');
 
       const raw = await options.flashClient.chat(flashPrompt);
       const jsonMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/) ?? [null, raw];
-      const candidates = JSON.parse((jsonMatch[1] ?? raw).trim()) as Array<{ title: string; claim: string; category: string; severity: string }>;
+      const candidates = JSON.parse((jsonMatch[1] ?? raw).trim()) as Array<{ title: string; claim: string; category: string; severity: string; verified?: boolean }>;
 
       for (const c of candidates) {
+        // 未验证 + severity=high → 降级到 medium
+        const isVerified = c.verified !== false;
+        const sev = (c.severity as AuditFinding['severity']) ?? 'medium';
+        const adjustedSeverity: AuditFinding['severity'] = (!isVerified && sev === 'high') ? 'medium' : sev;
+
         const f: AuditFinding = {
           id: nextId('FL'), title: c.title,
           category: (c.category as AuditFinding['category']) ?? 'maintainability',
-          severity: (c.severity as AuditFinding['severity']) ?? 'medium',
+          severity: adjustedSeverity,
           claim: c.claim,
           evidence: [],
           verificationStatus: 'unverified',

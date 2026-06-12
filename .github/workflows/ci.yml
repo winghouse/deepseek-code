@@ -28,7 +28,7 @@ jobs:
       - name: Type check
         run: pnpm -r typecheck
 
-      - name: Unit tests (278)
+      - name: Unit tests (330)
         run: pnpm test
 
       - name: Router eval (40)
