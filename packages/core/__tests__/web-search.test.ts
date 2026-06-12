@@ -80,12 +80,13 @@ describe('validateUrl — 安全边界', () => {
     expect(validateUrl('http://[fd00::1]').valid).toBe(false);
   });
 
-  it('禁止 IPv4-mapped IPv6 (URL 解析器会标准化，检测在解析后)', () => {
-    // URL 解析器会标准化为 hex 格式，需要测试解析后的实际 hostname
-    const r = validateUrl('http://[::ffff:10.0.0.1]');
-    // 标准化后 hostname 变成 [::ffff:a00:1]，不再包含 10.x pattern
-    // 当前实现无法检测标准化后的 IPv4-mapped 地址——已知局限
-    expect(r.valid).toBe(true); // 已知局限
+  it('禁止 IPv4-mapped IPv6，避免私网 IPv4 标准化后绕过', () => {
+    expect(validateUrl('http://[::ffff:10.0.0.1]').valid).toBe(false);
+    expect(validateUrl('http://[::ffff:127.0.0.1]').valid).toBe(false);
+    expect(validateUrl('http://[::ffff:192.168.1.1]').valid).toBe(false);
+    expect(validateUrl('http://[::ffff:172.16.0.1]').valid).toBe(false);
+    expect(validateUrl('http://[::ffff:169.254.10.1]').valid).toBe(false);
+    expect(validateUrl('http://[::ffff:8.8.8.8]').valid).toBe(false);
   });
 
   // ═══ 非标准 IP 表达 ═══

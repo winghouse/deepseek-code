@@ -43,7 +43,7 @@ export interface UrlValidation {
  * 2. 禁止 file://、ftp:// 等
  * 3. 禁止 localhost / 127.0.0.1 / 0.0.0.0 / [::1]
  * 4. 禁止内网 IP: 10.x / 172.16-31.x / 192.168.x
- * 5. 禁止 metadata 地址: 169.254.169.254
+ * 5. 禁止 metadata 地址: 169.254.0.0/16
  * 6. 最大 URL 长度 2048
  */
 export function validateUrl(rawUrl: string): UrlValidation {
@@ -104,12 +104,10 @@ export function validateUrl(rawUrl: string): UrlValidation {
   if (hostname.startsWith('[fc') || hostname.startsWith('[fd') || hostname.startsWith('fc') || hostname.startsWith('fd')) {
     return { valid: false, sanitizedUrl: '', error: '禁止访问 IPv6 unique local 地址' };
   }
-  // IPv4-mapped IPv6
+  // IPv4-mapped IPv6. Node URL 会把 ::ffff:10.0.0.1 标准化成 ::ffff:a00:1，
+  // 这里直接禁用该类非标准表达，避免私网 IPv4 被编码后绕过。
   if (hostname.includes('::ffff:')) {
-    const mapped = hostname.replace(/^\[|\]$/g, '').split('::ffff:')[1];
-    if (mapped && /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|0\.)/.test(mapped)) {
-      return { valid: false, sanitizedUrl: '', error: '禁止访问 IPv4-mapped 内网地址' };
-    }
+    return { valid: false, sanitizedUrl: '', error: '禁止访问 IPv4-mapped IPv6 地址' };
   }
 
   // 规则 5: 禁止 metadata 地址 (169.254.0.0/16 全段)
