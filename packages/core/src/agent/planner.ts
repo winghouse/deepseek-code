@@ -15,7 +15,13 @@ function buildPlanPrompt(task: string, mode?: string): string {
   // 审查/审计/优化类任务的专用引导
   const isAudit = /审查|审计|检查.*优化|代码质量|代码.*问题|安全.*漏洞|架构.*问题/i.test(task);
   const auditExample = isAudit
-    ? `\n这是代码审查任务。步骤写明操作对象(文件/目录/关键词), 禁止输出分析结论。审查最多8步。只输出 JSON。`
+    ? `\n这是代码审查任务。步骤写明操作对象(文件/目录/关键词), 禁止输出分析结论。审查最多8步。只输出 JSON。\n\n审计工具策略（稳定化）:\n- 已知文件路径 → read_file（单文件）或 read_file_batch（4-6个同目录文件）\n- 按关键词查找代码 → search_code 优先，禁止直接用 glob/list_files\n- glob/list_files 只在 search_code 无结果或无明确关键词时使用\n- 审计首轮禁止全仓 list_files。先基于 project rules + git diff 用 search_code 定位\n- read_file_batch 每次最多6个文件`
+    : '';
+
+  // 修复/调试类任务的专用引导
+  const isRepair = /报错|异常|失败|堆栈|stack trace|TS\d+|Cannot find module|TypeError|ReferenceError|SyntaxError|运行时错误|崩溃|crash|解析失败/i.test(task);
+  const repairGuide = isRepair
+    ? `\n这是修复任务。seed context 已包含精确的 file:line 上下文和 git_diff。\n\n修复工具优先级（严格）:\n- seed 已有 file:line → 不要 read_file 整文件，直接基于 seed 分析\n- 必须补充时只用 read_file_range（精读L-10~L+20）\n- symbol/test name → search_code 精准搜索\n- 禁止 list_files/glob 全仓扫描\n- 禁止重复调用 git_diff（seed 已提供）\n- readonly模式只给建议，不要 apply_patch\n\n步骤数 ≤4。只输出 JSON。`
     : '';
 
   // 批量读取类任务引导
@@ -27,6 +33,8 @@ function buildPlanPrompt(task: string, mode?: string): string {
 
   const basePrompt = isAudit
     ? `你是 DeepSeek Code Agent。${modeNote}${auditExample}\n只输出JSON，不要解释。`
+    : isRepair
+    ? `你是 DeepSeek Code Agent。${modeNote}${repairGuide}\n只输出JSON，不要解释。`
     : isBatch
     ? `你是 DeepSeek Code Agent。${modeNote}${batchGuide}\n只输出JSON，不要解释。`
     : `你是 DeepSeek Code Agent。${modeNote}\n生成**执行步骤**，每步写具体操作和文件名，禁止"分析/执行项目文件"这类泛化描述。最多8步。只输出JSON:{"steps":[{"order":1,"action":"read","description":"读取 package.json 了解依赖","targetFiles":["package.json"]}],"complexity":"simple|medium|complex","recommendedModel":"deepseek-v4-flash|deepseek-v4-pro"}。请用${lang}。`;

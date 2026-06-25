@@ -51,9 +51,11 @@ describe('buildProjectPrefix', () => {
     expect(idx2).toBeLessThan(idx3);
   });
 
-  it('包含 Git 状态', () => {
+  it('不包含 Git 状态（已移到 Dynamic Tail）', () => {
     const p = buildProjectPrefix(mockRepo);
-    expect(p).toContain('main');
+    expect(p).not.toContain('Git:');
+    expect(p).not.toContain('分支');
+    expect(p).not.toContain('有未提交改动');
   });
 });
 
@@ -107,5 +109,49 @@ describe('buildPrompt', () => {
     });
     expect(a.hashes.projectPrefixHash).toBe(b.hashes.projectPrefixHash);
     expect(a.hashes.sessionPrefixHash).toBe(b.hashes.sessionPrefixHash);
+  });
+
+  it('knownFiles 变化 → 仅 dynamicTail hash 变化', () => {
+    const a = buildPrompt({ repoInfo: mockRepo, task: '分析', plan: null, phase: 'analyzing', knownFiles: ['a.ts'], mode: 'readonly', userInput: '分析' });
+    const b = buildPrompt({ repoInfo: mockRepo, task: '分析', plan: null, phase: 'analyzing', knownFiles: ['a.ts', 'b.ts'], mode: 'readonly', userInput: '分析' });
+    expect(a.hashes.projectPrefixHash).toBe(b.hashes.projectPrefixHash);
+    expect(a.hashes.sessionPrefixHash).toBe(b.hashes.sessionPrefixHash);
+    expect(a.hashes.dynamicTailHash).not.toBe(b.hashes.dynamicTailHash);
+  });
+
+  it('phase 变化 → sessionPrefix hash 不变', () => {
+    const a = buildPrompt({ repoInfo: mockRepo, task: '分析', plan: null, phase: 'analyzing', knownFiles: ['a.ts'], mode: 'readonly', userInput: '分析' });
+    const b = buildPrompt({ repoInfo: mockRepo, task: '分析', plan: null, phase: 'verifying', knownFiles: ['a.ts'], mode: 'readonly', userInput: '分析' });
+    expect(a.hashes.sessionPrefixHash).toBe(b.hashes.sessionPrefixHash);
+    // phase 进入 dynamicTail，所以 dynamicTail 会变
+    expect(a.hashes.dynamicTailHash).not.toBe(b.hashes.dynamicTailHash);
+  });
+
+  it('git dirty 变化 → projectPrefix hash 不变', () => {
+    const cleanRepo = { ...mockRepo, git: { branch: 'main', status: '', hasUncommittedChanges: false } };
+    const dirtyRepo = { ...mockRepo, git: { branch: 'main', status: '?? new.ts', hasUncommittedChanges: true } };
+    const a = buildPrompt({ repoInfo: cleanRepo, task: '分析', plan: null, phase: 'analyzing', knownFiles: ['a.ts'], mode: 'readonly', userInput: '分析' });
+    const b = buildPrompt({ repoInfo: dirtyRepo, task: '分析', plan: null, phase: 'analyzing', knownFiles: ['a.ts'], mode: 'readonly', userInput: '分析' });
+    expect(a.hashes.projectPrefixHash).toBe(b.hashes.projectPrefixHash);
+  });
+});
+
+// ═══ 中文编码验证 ═══
+describe('buildGlobalPrefix 中文编码', () => {
+  it('包含关键中文字符串，无乱码', () => {
+    const p = buildGlobalPrefix();
+    expect(p).toContain('你是 DeepSeek Code Agent');
+    expect(p).toContain('报告分级标准');
+    expect(p).toContain('事实锚定铁律');
+    expect(p).not.toContain('浣犳槸');
+    expect(p).not.toContain('æ');
+  });
+
+  it('所有中文关键字可正常读取', () => {
+    const p = buildGlobalPrefix();
+    const chineseKeywords = ['工具协议', '安全规则', '输出格式', '事实锚定铁律', '报告分级标准'];
+    for (const kw of chineseKeywords) {
+      expect(p).toContain(kw);
+    }
   });
 });

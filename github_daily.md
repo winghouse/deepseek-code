@@ -1,0 +1,6 @@
+- 2026-06-12: 修复 `web_fetch` DNS 解析到内网/元数据地址的 SSRF 风险，涉及 `packages/core/src/tools/web-search.ts`、`packages/core/__tests__/web-search-dns.test.ts`，待提交。
+- 2026-06-12: 补充 report-validator 中文行号 + unmatched_findings 交叉校验测试用例（2条），涉及 `packages/core/__tests__/report-validator.test.ts`，待提交。
+- 2026-06-12: 修复 `第一项` 解析失败（正则命中但查表不覆盖），归一化剥离 `第...项`，涉及 `packages/cli/src/index.ts`，待提交。
+- 2026-06-12: 抽离 `resolvePendingChoice` 纯函数（单测 22 条覆盖全解析矩阵），新增 `packages/cli/src/resolve-pending-choice.ts`、`packages/cli/__tests__/resolve-pending-choice.test.ts`，待提交。
+- 2026-06-12: 集成 TTL（5分钟过期）+ 路由前清空策略，涉及 `packages/cli/src/index.ts`，待提交。
+- 2026-06-12: 增强 Agent 执行路径稳定性，audit/full_agent 增加确定性 seed context 与工具序列统计，并在 cache benchmark 报告中加入 tool sequence similarity，涉及 `packages/core/src/agent/loop.ts`、`packages/shared/src/types.ts`、`.evals/tasks/cache-bench.test.ts`，待提交。

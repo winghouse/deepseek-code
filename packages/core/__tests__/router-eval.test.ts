@@ -25,7 +25,8 @@ describe('Router 评测集', () => {
       : c.expected.execution;
 
     it(`${cat}/${c.input} → ${expectedLabel}${label}`, async () => {
-      const testCtx = { ...ctx, mode: mode as 'readonly' | 'ask' | 'auto' };
+      const ctxOverride = (c as any).ctx ?? {};
+      const testCtx = { ...ctx, mode: mode as 'readonly' | 'ask' | 'auto', ...ctxOverride };
       const route = await routeInput(c.input, testCtx);
       results.total++;
 
@@ -48,6 +49,9 @@ describe('Router 评测集', () => {
         passed = false;
       }
       if (c.expected.scanProject !== undefined && route.shouldScanProject !== c.expected.scanProject) {
+        passed = false;
+      }
+      if (c.expected.needsClarification !== undefined && route.needsClarification !== c.expected.needsClarification) {
         passed = false;
       }
 

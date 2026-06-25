@@ -1,0 +1,149 @@
+[
+  {
+    "name": "cold_audit",
+    "quality": {
+      "findingsCount": 0,
+      "retryCount": 0,
+      "degradedReport": false,
+      "fakePaths": 0,
+      "missingLocations": false,
+      "unmatchedFindings": false,
+      "outputLength": 34
+    },
+    "hitRate": 76.40011852855268,
+    "totalPrompt": 23623,
+    "totalHit": 18048,
+    "totalCost": 0.007482940000000001,
+    "totalLatency": 15948,
+    "toolSequence": [
+      "read_package_json",
+      "read_project_rules",
+      "git_status",
+      "git_diff",
+      "search_code",
+      "search_code",
+      "search_code",
+      "list_files",
+      "list_files",
+      "list_files",
+      "list_files"
+    ],
+    "auditSeedSequence": [
+      "read_package_json",
+      "read_project_rules",
+      "git_status",
+      "git_diff"
+    ],
+    "calls": [
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 7.253,
+        "hitRate": 35.29573969391976,
+        "cost": 0.0037673700000000004
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 7.814,
+        "hitRate": 96.64704376759661,
+        "cost": 0.0016612800000000002
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 8.556,
+        "hitRate": 92.7536231884058,
+        "cost": 0.0020542900000000003
+      }
+    ]
+  },
+  {
+    "name": "warm_audit_same",
+    "quality": {
+      "findingsCount": 0,
+      "retryCount": 0,
+      "degradedReport": false,
+      "fakePaths": 0,
+      "missingLocations": false,
+      "unmatchedFindings": false,
+      "outputLength": 34
+    },
+    "hitRate": 77.79578606158833,
+    "totalPrompt": 24680,
+    "totalHit": 19200,
+    "totalCost": 0.00932864,
+    "totalLatency": 22638,
+    "toolSequence": [
+      "read_package_json",
+      "read_project_rules",
+      "git_status",
+      "git_diff",
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code",
+      "read_file_batch"
+    ],
+    "auditSeedSequence": [
+      "read_package_json",
+      "read_project_rules",
+      "git_status",
+      "git_diff"
+    ],
+    "calls": [
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 7.235,
+        "hitRate": 35.38355217691776,
+        "cost": 0.0046707
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 8.386,
+        "hitRate": 94.6339136656332,
+        "cost": 0.0023265200000000003
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 9.059,
+        "hitRate": 96.08124517054863,
+        "cost": 0.00233142
+      }
+    ]
+  },
+  {
+    "name": "conversation_recall",
+    "quality": {
+      "findingsCount": 0,
+      "retryCount": 0,
+      "degradedReport": false,
+      "fakePaths": 0,
+      "missingLocations": false,
+      "unmatchedFindings": false,
+      "outputLength": 34
+    },
+    "hitRate": 27.63584023029867,
+    "totalPrompt": 2779,
+    "totalHit": 768,
+    "totalCost": 0.0015092200000000001,
+    "totalLatency": 5365,
+    "toolSequence": [
+      "list_files",
+      "read_package_json",
+      "read_project_rules"
+    ],
+    "auditSeedSequence": [],
+    "calls": [
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 2.779,
+        "hitRate": 27.63584023029867,
+        "cost": 0.0015092200000000001
+      }
+    ]
+  }
+]

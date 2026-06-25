@@ -54,6 +54,8 @@ export interface TokenUsage {
   completion_tokens: number;
   total_tokens: number;
   cache_hit_tokens?: number;
+  /** DeepSeek V4 直接返回，替代 total - hit 估算 */
+  cache_miss_tokens?: number;
 }
 
 // ---- 工具定义 ----
@@ -164,11 +166,56 @@ export interface Session {
   stopReason?: StopReason;
   /** 会话统计：KV Cache / Token / Model / Cost */
   stats?: SessionStats;
+  /** 结构化发现——审查完成后从报告中提取，供 fix-verification 使用 */
+  findings?: StructuredFinding[];
   /** 修复完成度复核结果（内部字段——结构化报告直接覆盖 summary） */
   __fvResult?: Record<string, unknown>;
+  /** 趋势对比行（内部字段） */
+  __fvTrend?: string[];
+}
+
+// ---- 结构化 Finding ----
+
+export interface StructuredFinding {
+  /** 稳定标识：suite+序号，同文件行号变化不改变 ID */
+  id: string;
+  severity: 'high' | 'medium' | 'low';
+  title: string;
+  /** 文件路径（仓库相对路径） */
+  file?: string;
+  /** 行号 */
+  line?: number;
+  category?: string;
+  /** 代码证据片段 */
+  evidence?: string;
+  /** 修复建议 */
+  recommendation?: string;
+  /** 置信度 0-1 */
+  confidence: number;
+  /** 来源: model=模型输出, validator=程序校验, manual=人工标注 */
+  source: 'model' | 'validator' | 'manual';
 }
 
 // ---- 会话统计 ----
+
+/** 单次模型调用统计 */
+export interface ModelCallStats {
+  model: string;
+  route: string;
+  contextPolicy: string;
+  prefixHashes?: { global: string; runtime: string; project: string; session: string };
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    cacheHitTokens: number;
+    cacheMissTokens: number;
+  };
+  latencyMs: number;
+  costUsd: number;
+  /** 当前调用前已执行的工具序列快照，用于分析 Agent 路径稳定性 */
+  toolSequence?: string[];
+}
 
 export interface SessionStats {
   /** 总 prompt tokens */
@@ -189,6 +236,19 @@ export interface SessionStats {
   elapsedMs: number;
   /** 预估成本 USD */
   estimatedCostUsd: number;
+  /** KV Cache 分层诊断: 每层 prefix 的首轮 hash（用于跨会话比较） */
+  prefixHashes?: {
+    global: string;
+    runtime: string;
+    project: string;
+    session: string;
+  };
+  /** 每次模型调用的详细统计（per-call 真实指标） */
+  modelCalls?: ModelCallStats[];
+  /** 本次会话实际工具序列（包含程序侧 seed 工具 + 模型工具调用） */
+  toolSequence?: string[];
+  /** 程序侧确定性起手式工具序列 */
+  auditSeedSequence?: string[];
 }
 
 /** 执行计划 */
@@ -341,6 +401,8 @@ export interface RouteDecision {
   reason?: string;
   confidence: number;            // 0-1
   analysisDepth?: 'none' | 'overview' | 'standard' | 'deep';
+  /** KV Cache 策略: 控制上下文注入级别 */
+  contextPolicy?: 'none' | 'session_state' | 'project_summary' | 'project_slices' | 'full_agent';
 }
 
 // ═══ External Resource Memory ═══

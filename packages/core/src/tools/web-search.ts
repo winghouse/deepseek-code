@@ -7,6 +7,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import * as dns from 'node:dns/promises';
 import type { WebSearchConfig, WebSearchResult, WebSearchResultItem, WebFetchConfig, WebFetchResult } from 'deepseek-code-shared';
 
 // ═══ Serper API Key 读取 ═══
@@ -116,6 +117,65 @@ export function validateUrl(rawUrl: string): UrlValidation {
   }
 
   return { valid: true, sanitizedUrl: parsed.href };
+}
+
+function isBlockedResolvedAddress(address: string): string | null {
+  const host = address.toLowerCase().replace(/^\[|\]$/g, '');
+
+  if (/^(127\.|0\.|10\.)/.test(host)) return '禁止访问本地/内网地址';
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return '禁止访问内网地址 (172.16-31.x)';
+  if (/^192\.168\./.test(host)) return '禁止访问内网地址 (192.168.x)';
+  if (/^169\.254\./.test(host)) return '禁止访问云元数据/link-local 地址 (169.254.0.0/16)';
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)) return '禁止访问 CGNAT 保留地址 (100.64.0.0/10)';
+  if (/^198\.(1[89])\./.test(host)) return '禁止访问基准测试保留地址 (198.18.0.0/15)';
+  if (/^(22[4-9]|23\d|24\d|25[0-5])\./.test(host)) return '禁止访问 multicast/reserved 地址';
+
+  if (host === '::1') return '禁止访问 IPv6 loopback 地址';
+  if (host.startsWith('fe80:')) return '禁止访问 IPv6 link-local 地址';
+  if (host.startsWith('fc') || host.startsWith('fd')) return '禁止访问 IPv6 unique local 地址';
+  if (host.includes('::ffff:')) return '禁止访问 IPv4-mapped IPv6 地址';
+
+  return null;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`DNS 解析超时 (${timeoutMs}ms)`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/**
+ * URL + DNS 安全校验。
+ * validateUrl 只能检查字面 hostname；这里额外拦截解析到内网/元数据网段的域名。
+ */
+export async function validateUrlWithDns(rawUrl: string, timeoutMs = 1500): Promise<UrlValidation> {
+  const base = validateUrl(rawUrl);
+  if (!base.valid) return base;
+
+  const parsed = new URL(base.sanitizedUrl);
+  const hostname = parsed.hostname.toLowerCase();
+
+  try {
+    const records = await withTimeout(dns.lookup(hostname, { all: true, verbatim: true }), timeoutMs);
+    for (const record of records) {
+      const blockedReason = isBlockedResolvedAddress(record.address);
+      if (blockedReason) {
+        return { valid: false, sanitizedUrl: '', error: `DNS 解析目标被拦截: ${blockedReason}` };
+      }
+    }
+  } catch {
+    // DNS 失败交给 fetch 返回具体错误；这里不把临时解析失败误判为安全风险。
+  }
+
+  return base;
 }
 
 // ═══ 搜索后端实现 ═══
@@ -490,7 +550,7 @@ export async function executeWebFetch(
   const start = Date.now();
 
   // ═══ SSRF 防护: 统一走 validateUrl ═══
-  const urlCheck = validateUrl(url);
+  const urlCheck = await validateUrlWithDns(url);
   if (!urlCheck.valid) {
     return { success: false, url, content: '', contentLength: 0, elapsedMs: Date.now() - start, fetchQuality: 'blocked', error: urlCheck.error };
   }
@@ -510,7 +570,7 @@ export async function executeWebFetch(
 
   const pages: Array<{ url: string; title: string; content: string }> = [];
   const visited = new Set<string>();
-  let currentUrl = url.trim();
+  let currentUrl = urlCheck.sanitizedUrl;
 
   for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
     const normalized = normalizeUrl(currentUrl);
@@ -540,7 +600,7 @@ export async function executeWebFetch(
     // 检测下一页——必须走 validateUrl 防止 SSRF 通过 HTML 内分页链接绕过
     const nextUrl = detectNextPageUrl(pageResult.html, currentUrl);
     if (!nextUrl) break;
-    const nextCheck = validateUrl(nextUrl);
+    const nextCheck = await validateUrlWithDns(nextUrl);
     if (!nextCheck.valid) {
       console.log(`⚠️ 分页链接被拦截: ${nextUrl} — ${nextCheck.error}`);
       break;
@@ -584,11 +644,16 @@ async function fetchSinglePage(
   format: string,
   maxChars: number,
 ): Promise<{ success: boolean; html: string; title?: string; content: string; error?: string }> {
+  const dnsCheck = await validateUrlWithDns(url);
+  if (!dnsCheck.valid) {
+    return { success: false, html: '', content: '', error: dnsCheck.error ?? 'URL 安全校验失败' };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(dnsCheck.sanitizedUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; DeepSeekCode/1.0; +https://github.com/deepseek-code)',
         'Accept': 'text/html,application/xhtml+xml,*/*',
@@ -598,8 +663,8 @@ async function fetchSinglePage(
     });
 
     // 重定向后二次校验: 防止 302→内网
-    if (res.url !== url) {
-      const redirectCheck = validateUrl(res.url);
+    if (res.url !== dnsCheck.sanitizedUrl) {
+      const redirectCheck = await validateUrlWithDns(res.url);
       if (!redirectCheck.valid) {
         return { success: false, html: '', content: '', error: `重定向目标被拦截: ${redirectCheck.error}` };
       }

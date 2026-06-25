@@ -13,6 +13,7 @@ import { MODEL_PRO, MODEL_FLASH } from 'deepseek-code-shared';
 import type { LastAgentResult, InteractiveSessionState } from 'deepseek-code-core';
 import type { ModelRouterConfig } from 'deepseek-code-core';
 import type { DeepSeekCodeConfig, PermissionRequest } from 'deepseek-code-shared';
+import { resolvePendingChoice } from './resolve-pending-choice.js';
 import { ensureConfig, loadConfig, CONFIG_PATH } from './config.js';
 import { getTemplates, generateAgentsMdTemplate } from './templates.js';
 
@@ -573,9 +574,9 @@ program
 // Context Stats
 program
   .command('context [action] [target]')
-  .description('上下文管理 (stats / show <id> / 默认prefix)')
+  .description('上下文管理 (stats / show <id> / explain <id> / 默认prefix)')
   .action(async (action: string | undefined, target: string | undefined) => {
-    if (action === 'stats' || action === 'show') {
+    if (action === 'stats' || action === 'show' || action === 'explain') {
       const { FileMemoryStore } = await import('deepseek-code-core');
       const memory = new FileMemoryStore(process.cwd());
 
@@ -601,6 +602,37 @@ program
           const st = x.stats!; return s + (st.totalPromptTokens > 0 ? st.cacheHitTokens / st.totalPromptTokens : 0);
         }, 0) / recent.length * 100);
         console.log(`📊 ${recent.length}会话 | 💰总$${tc.toFixed(4)} | 📊${(tt/1000).toFixed(0)}K tokens | 🔑均${ac}%命中`);
+
+        // 按 contextPolicy 聚合
+        const allCalls = recent.flatMap(s => s.stats?.modelCalls ?? []);
+        if (allCalls.length > 0) {
+          const byPolicy: Record<string, { calls: number; promptK: number; hitK: number; missK: number; cost: number; latencyMs: number }> = {};
+          for (const c of allCalls) {
+            const key = c.contextPolicy || 'unknown';
+            if (!byPolicy[key]) byPolicy[key] = { calls: 0, promptK: 0, hitK: 0, missK: 0, cost: 0, latencyMs: 0 };
+            byPolicy[key].calls++;
+            byPolicy[key].promptK += c.usage.promptTokens / 1000;
+            byPolicy[key].hitK += c.usage.cacheHitTokens / 1000;
+            byPolicy[key].missK += c.usage.cacheMissTokens / 1000;
+            byPolicy[key].cost += c.costUsd;
+            byPolicy[key].latencyMs += c.latencyMs;
+          }
+          console.log(`\n按 contextPolicy 聚合 (${allCalls.length} 次调用):`);
+          const policyLabel: Record<string, string> = { none:'🚫免上下文', session_state:'📋会话状态', project_summary:'📦项目摘要', full_agent:'🤖全Agent' };
+          for (const [policy, d] of Object.entries(byPolicy).sort(([,a],[,b]) => b.cost - a.cost)) {
+            const hr = d.promptK > 0 ? ((d.hitK / d.promptK) * 100).toFixed(0) : '0';
+            const avgLat = (d.latencyMs / d.calls / 1000).toFixed(1);
+            console.log(`  ${policyLabel[policy] || policy}: ${d.calls}次 | Prompt:${d.promptK.toFixed(0)}K | Hit:${hr}% | Cost:$${d.cost.toFixed(4)} | 均${avgLat}s`);
+          }
+
+          // session_state vs full_agent 对比
+          const ss = byPolicy['session_state'];
+          const fa = byPolicy['full_agent'];
+          if (ss && fa) {
+            const ratio = (ss.promptK / Math.max(fa.promptK, 0.001) * 100).toFixed(0);
+            console.log(`\n💡 session_state 单次平均 prompt: ${(ss.promptK/ss.calls).toFixed(0)}K vs full_agent: ${(fa.promptK/fa.calls).toFixed(0)}K (${ratio}%)`);
+          }
+        }
         return;
       }
 
@@ -613,6 +645,87 @@ program
         console.log(`⏱ ${(st.elapsedMs/1000).toFixed(0)}s | 💰 $${st.estimatedCostUsd.toFixed(6)}`);
         console.log(`Prompt:${(st.totalPromptTokens/1000).toFixed(1)}K Out:${(st.totalCompletionTokens/1000).toFixed(1)}K Hit:${(st.cacheHitTokens/1000).toFixed(1)}K(${cr}%) Miss:${(st.cacheMissTokens/1000).toFixed(1)}K`);
         console.log(`Flash×${st.flashCalls} Pro×${st.proCalls} 工具×${st.toolCalls}`);
+        if (st.prefixHashes) {
+          console.log(`\n前缀 Hash 诊断:`);
+          console.log(`  Global:  ${st.prefixHashes.global}`);
+          console.log(`  Runtime: ${st.prefixHashes.runtime}`);
+          console.log(`  Project: ${st.prefixHashes.project}`);
+          console.log(`  Session: ${st.prefixHashes.session}`);
+        }
+        return;
+      }
+
+      if (action === 'explain' && target) {
+        const s = await memory.loadSession(target);
+        if (!s?.stats) { console.log('该会话无统计数据，无法诊断'); return; }
+        const st = s.stats!;
+        console.log(`📋 诊断: ${(s.taskDescription || '').slice(0, 60)}`);
+        console.log(`创建: ${new Date(s.createdAt).toLocaleString('zh-CN')}\n`);
+        const cr = st.totalPromptTokens > 0 ? ((st.cacheHitTokens / st.totalPromptTokens) * 100).toFixed(0) : '0';
+        console.log(`KV Cache 总览`);
+        console.log(`  Prompt: ${(st.totalPromptTokens/1000).toFixed(0)}K`);
+        console.log(`  Hit:    ${(st.cacheHitTokens/1000).toFixed(0)}K`);
+        console.log(`  Miss:   ${(st.cacheMissTokens/1000).toFixed(0)}K`);
+        console.log(`  Rate:   ${cr}%`);
+        console.log(`  Cost:   $${st.estimatedCostUsd.toFixed(4)}`);
+        const missRatio = st.totalPromptTokens > 0 ? st.cacheMissTokens / st.totalPromptTokens : 0;
+        console.log(`  来源: ${missRatio > 0.5 ? '冷启动(首轮)' : st.toolCalls > 0 ? `工具调用(${st.toolCalls}次)` : 'Dynamic Tail'}\n`);
+
+        if (st.prefixHashes) {
+          const allSessions = await memory.listSessions();
+          const withHashes = allSessions.filter(x => x.stats?.prefixHashes).slice(0, 20);
+
+          // 跨会话对比: 找同 project hash 的会话（可共享缓存）
+          const sameProject = withHashes.filter(x =>
+            x.stats!.prefixHashes!.project === st.prefixHashes!.project &&
+            x.id !== s.id
+          );
+          const sameSession = withHashes.filter(x =>
+            x.stats!.prefixHashes!.session === st.prefixHashes!.session &&
+            x.id !== s.id
+          );
+
+          const { buildGlobalPrefix, buildRuntimePrefix } = await import('deepseek-code-core');
+          const crypto = await import('node:crypto');
+          const hash = (v: string) => crypto.createHash('md5').update(v).digest('hex').slice(0, 8);
+          const curGlobal = hash(buildGlobalPrefix());
+          const curRuntime = hash(buildRuntimePrefix());
+
+          console.log(`前缀 Hash 诊断:`);
+          console.log(`  ┌ Global:  ${st.prefixHashes.global}`);
+          console.log(`  │ 当前:   ${curGlobal} ${st.prefixHashes.global === curGlobal ? '✅' : '⚠️ 已变(版本升级?)'}`);
+          console.log(`  ├ Runtime: ${st.prefixHashes.runtime}`);
+          console.log(`  │ 当前:   ${curRuntime} ${st.prefixHashes.runtime === curRuntime ? '✅' : '⚠️ 已变(路径/OS?)'}`);
+          console.log(`  ├ Project: ${st.prefixHashes.project}`);
+          console.log(`  │ 同hash会话: ${sameProject.length} 个 → ${sameProject.length > 0 ? '可复用Project层缓存' : '孤立会话'}`);
+          if (sameProject.length > 0) {
+            for (const xs of sameProject.slice(0, 3)) {
+              const xst = xs.stats!;
+              const xcr = xst.totalPromptTokens > 0 ? ((xst.cacheHitTokens / xst.totalPromptTokens) * 100).toFixed(0) : '0';
+              console.log(`  │   ${xs.id.slice(0, 12)}... ${(xs.taskDescription||'').slice(0, 30)} 命中率:${xcr}%`);
+            }
+          }
+          console.log(`  └ Session: ${st.prefixHashes.session}`);
+          console.log(`    同hash会话: ${sameSession.length} 个 → ${sameSession.length > 0 ? '任务/计划相同' : '独立任务'}`);
+
+          // 分层 miss 归因
+          console.log(`\n📊 分层 miss 归因:`);
+          const globalOk = st.prefixHashes.global === curGlobal;
+          const runtimeOk = st.prefixHashes.runtime === curRuntime;
+          console.log(`  Global:  ${globalOk ? '✅ 一致' : '⚠️ 变化 → 全量 cache miss'}`);
+          console.log(`  Runtime: ${runtimeOk ? '✅ 一致' : '⚠️ 变化 → Runtime 层起 miss'}`);
+          if (!globalOk || !runtimeOk) {
+            console.log(`  💡 建议: 运行 dscode context warm 重建缓存`);
+          }
+          if (sameProject.length === 0 && globalOk && runtimeOk) {
+            console.log(`  Project: 无同hash会话 → 此为首次分析该仓库(冷启动)`);
+          }
+          if (st.toolCalls > 0 && missRatio < 0.3) {
+            console.log(`  Dynamic: ${st.toolCalls}次工具调用 → 仅尾缀变化，前缀缓存命中良好`);
+          } else if (st.toolCalls > 0) {
+            console.log(`  Dynamic: ${st.toolCalls}次工具调用，miss=${(missRatio*100).toFixed(0)}%`);
+          }
+        }
         return;
       }
     }
@@ -1196,6 +1309,8 @@ async function interactiveMode(
     ? { ...prevState.lastAgentResult, intent: prevState.lastAgentResult.intent as import('deepseek-code-shared').UserIntent, execution: prevState.lastAgentResult.execution as import('deepseek-code-shared').ExecutionMode, filesRead: prevState.lastAgentResult.filesRead ?? [], toolsUsed: prevState.lastAgentResult.toolsUsed ?? [], findings: prevState.lastAgentResult.findings ?? [], nextSuggestions: [] }
     : null;
   let pendingAction: string | undefined = prevState?.pendingAction?.description;
+  let pendingChoices: Array<{ id: string; label: string }> | undefined;
+  let pendingChoicesCreatedAt: number = 0;
   let isFirstMessage = !prevState;
   let conversationFocus: import('deepseek-code-core').RouterContext['conversationFocus'] = undefined;
 
@@ -1262,11 +1377,31 @@ async function interactiveMode(
   rl.prompt();
 
   rl.on('line', async (line: string) => {
-    const input = line.trim();
+    let input = line.trim();
 
     if (!input) {
       rl.prompt();
       return;
+    }
+
+    // 短回复继承: resolvePendingChoice 解析 "1"/"一"/"第一项" 等序号
+    if (pendingChoices && pendingChoices.length > 0) {
+      // TTL 过期: 超过 5 分钟自动清空
+      const TTL_MS = 5 * 60 * 1000;
+      if (pendingChoicesCreatedAt && Date.now() - pendingChoicesCreatedAt > TTL_MS) {
+        console.log('⏰ 上次选项已过期，请重新输入完整任务\n');
+        pendingChoices = undefined;
+        pendingChoicesCreatedAt = 0;
+      } else {
+        const resolved = resolvePendingChoice(input, pendingChoices);
+        if (resolved) {
+          console.log(`\n🔗 已选择: ${resolved.label}\n`);
+          input = resolved.label;
+          pendingChoices = undefined;
+          pendingChoicesCreatedAt = 0;
+          pendingAction = input;
+        }
+      }
     }
 
     // 系统操作：不经过路由
@@ -1384,6 +1519,12 @@ async function interactiveMode(
       return;
     }
 
+    // 非短回复的真实任务输入 → 用户已转向新任务，清空待选项
+    if (pendingChoices) {
+      pendingChoices = undefined;
+      pendingChoicesCreatedAt = 0;
+    }
+
     // 意图分流（带 spinner，避免 silent gap）
     const spinner = startSpinner('分析意图');
     const routerMode = currentMode === 'plan' ? 'readonly' : currentMode === 'edit' ? 'ask' : 'auto';
@@ -1473,6 +1614,7 @@ async function interactiveMode(
       input,
       isFirstMessage ? null : sharedMessages,
       config, apiKey, baseUrl, modelStrategy, workingDir, currentMode, permManager,
+      route?.contextPolicy,
     );
     if (newMsgs) {
       sharedMessages = newMsgs;
@@ -1489,6 +1631,16 @@ async function interactiveMode(
         pushHistory({ role: 'system', content: `[Agent 任务失败] 用户请求 "${input.slice(0, 80)}"，但 Agent 未能执行任何工具调用就退出了。请向用户说明并建议重试或简化任务。` });
       } else if (finalOutput) {
         pushHistory({ role: 'assistant', content: `[刚才的分析结论，${toolCallCount} 次工具调用，${finalOutput.length} 字] ${finalOutput.slice(0, 1500)}` });
+
+        // 提取编号选项 → pendingChoices (只在模型主动列出引导选项时)
+        if (/你可以选择|请选择|需要我|选哪|接下来可以|怎么帮|你想|告诉我/i.test(finalOutput)) {
+          const cm = [...finalOutput.matchAll(/(?:^|\n)\s*(\d+)[.、）)]\s*(.+?)(?=\n\s*\d+[.、）)]|\n\n|$)/gm)];
+          if (cm.length >= 2 && cm.length <= 5) {
+            pendingChoices = cm.map(c => ({ id: c[1], label: c[2].trim().slice(0, 80) }));
+            pendingChoicesCreatedAt = Date.now();
+          }
+        }
+
         // 提取输入中的 URL，保存到 findings 以支持 URL 追问路由
         const inputUrls = [...input.matchAll(/https?:\/\/\S+/g)].map((m) => m[0]);
         lastAgentResult = {
@@ -1536,6 +1688,7 @@ async function runChatTurn(
   config: DeepSeekCodeConfig,
   apiKey: string, baseUrl: string, modelStrategy: string, workingDir: string, currentMode: 'plan' | 'edit' | 'auto',
   permManager?: PermissionManager,
+  contextPolicy?: 'none' | 'session_state' | 'project_summary' | 'project_slices' | 'full_agent',
 ): Promise<import('deepseek-code-shared').ChatMessage[] | null> {
   const routerConfig: import('deepseek-code-core').ModelRouterConfig = {
     strategy: modelStrategy as 'auto' | 'pro' | 'flash',
@@ -1554,6 +1707,7 @@ async function runChatTurn(
       workingDir, router, tools, memory, readOnly: currentMode === 'plan', streaming: true,
       permissionManager: permManager,
       onConfirm: async () => true,
+      contextPolicy,
     });
     if (!result.success || !result.session) return null;
 

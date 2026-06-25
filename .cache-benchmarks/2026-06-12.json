@@ -1,0 +1,101 @@
+[
+  {
+    "name": "cold_audit",
+    "quality": {
+      "findingsCount": 0,
+      "retryCount": 0,
+      "degradedReport": false,
+      "fakePaths": 0,
+      "missingLocations": false,
+      "unmatchedFindings": false,
+      "outputLength": 34
+    },
+    "hitRate": 54.66491458607096,
+    "totalPrompt": 24352,
+    "totalHit": 13312,
+    "totalCost": 0.009893540000000001,
+    "totalLatency": 20388,
+    "calls": [
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 4.691,
+        "hitRate": 54.57258580260073,
+        "cost": 0.00199254
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 5.988,
+        "hitRate": 81.22912491649966,
+        "cost": 0.00226495
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 13.673,
+        "hitRate": 43.06297081840123,
+        "cost": 0.005636050000000001
+      }
+    ]
+  },
+  {
+    "name": "warm_audit_same",
+    "quality": {
+      "findingsCount": 0,
+      "retryCount": 0,
+      "degradedReport": false,
+      "fakePaths": 0,
+      "missingLocations": false,
+      "unmatchedFindings": false,
+      "outputLength": 34
+    },
+    "hitRate": 77.79263400996717,
+    "totalPrompt": 16454,
+    "totalHit": 12800,
+    "totalCost": 0.00492298,
+    "totalLatency": 14048,
+    "calls": [
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 4.692,
+        "hitRate": 54.5609548167093,
+        "cost": 0.0018310300000000002
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 5.591,
+        "hitRate": 84.70756573063852,
+        "cost": 0.00154282
+      },
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 6.171,
+        "hitRate": 89.19137903095123,
+        "cost": 0.0015491300000000001
+      }
+    ]
+  },
+  {
+    "name": "conversation_recall",
+    "quality": {
+      "findingsCount": 0,
+      "retryCount": 0,
+      "degradedReport": false,
+      "fakePaths": 0,
+      "missingLocations": false,
+      "unmatchedFindings": false,
+      "outputLength": 34
+    },
+    "hitRate": 27.705627705627705,
+    "totalPrompt": 2772,
+    "totalHit": 768,
+    "totalCost": 0.0014309100000000003,
+    "totalLatency": 5585,
+    "calls": [
+      {
+        "model": "deepseek-v4-pro",
+        "promptK": 2.772,
+        "hitRate": 27.705627705627705,
+        "cost": 0.0014309100000000003
+      }
+    ]
+  }
+]

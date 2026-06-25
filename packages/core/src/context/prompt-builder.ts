@@ -138,10 +138,6 @@ export function buildProjectPrefix(repoInfo: RepoInfo): string {
       return agents.length > 0 ? agents.join('\n\n') : 'AGENTS.md: 无';
     })(),
     repoInfo.rules.readme ? `README:\n${repoInfo.rules.readme}` : 'README: 无',
-    '',
-    repoInfo.git
-      ? `Git: 分支 ${repoInfo.git.branch}, 有未提交改动: ${repoInfo.git.hasUncommittedChanges ? '是' : '否'}`
-      : 'Git: 非仓库',
   ]);
 }
 
@@ -153,13 +149,11 @@ export function buildProjectPrefix(repoInfo: RepoInfo): string {
 export function buildSessionPrefix(
   task: string,
   plan: ExecutionPlan | null,
-  phase: string,
   mode: string,
 ): string {
-  // 注意: knownFiles 已移到 Dynamic Tail，避免每轮变化破坏 Session KV Cache
+  // 注意: knownFiles、phase 已移到 Dynamic Tail，避免每轮变化破坏 Session KV Cache
   return stableJoin('\n', [
     `## 任务: ${task}`,
-    `阶段: ${phase}`,
     `模式: ${mode}`,
     '',
     plan ? `## 计划\n${formatPlanStable(plan)}` : '',
@@ -184,9 +178,13 @@ export function buildDynamicTail(
   errors?: string,
   gitDiff?: string,
   knownFiles?: string[],
+  gitState?: string,
+  currentPhase?: string,
 ): string {
   return stableJoin('\n', [
     `## 当前输入\n${userInput}`,
+    currentPhase ? `## 当前阶段\n${currentPhase}` : '',
+    gitState ? `## Git 状态\n${gitState}` : '',
     knownFiles && knownFiles.length > 0
       ? `## 已知文件\n${[...knownFiles].sort().map((f) => `- ${f}`).join('\n')}`
       : '',
@@ -216,10 +214,14 @@ export function buildPrompt(params: {
   const runtimePrefix = buildRuntimePrefix();
   const projectPrefix = buildProjectPrefix(params.repoInfo);
   const sessionPrefix = buildSessionPrefix(
-    params.task, params.plan, params.phase, params.mode,
+    params.task, params.plan, params.mode,
   );
+  const gitState = params.repoInfo.git
+    ? `分支 ${params.repoInfo.git.branch}, 有未提交改动: ${params.repoInfo.git.hasUncommittedChanges ? '是' : '否'}`
+    : '非 Git 仓库';
   const dynamicTail = buildDynamicTail(
     params.userInput, params.toolResults, params.errors, params.gitDiff, params.knownFiles,
+    gitState, params.phase,
   );
 
   return {

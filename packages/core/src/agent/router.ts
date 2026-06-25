@@ -165,22 +165,34 @@ function commandRouter(input: string): RouteDecision | null {
 function heuristicRouter(text: string, ctx: RouterContext): RouteDecision | null {
   // 短追问 → 读取 focus 文件
   if (ctx.conversationFocus?.file && /^(讲一下|详细|展开|说说|再讲|解释|怎么)/.test(text) && text.length <= 8) {
-    return { intent: "code_task", execution: "agent_readonly", target: { type: "file", path: ctx.conversationFocus.file }, shouldScanProject: false, allowedTools: ["read_file", "read_file_range"], needsClarification: false, confidence: 0.85, reason: "短追问 → focus" };
+    return { intent: "code_task", execution: "agent_readonly", target: { type: "file", path: ctx.conversationFocus.file }, shouldScanProject: false, allowedTools: ["read_file", "read_file_range"], needsClarification: false, confidence: 0.85, reason: "短追问 → focus", contextPolicy: "project_slices" };
   }
   // 纯寒暄
   if (/^(你好|hi|hello|hey|哈喽|在吗)s*$/i.test(text)) {
-    return { intent: "small_talk", execution: "llm_direct", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.95, reason: "寒暄" };
+    return { intent: "small_talk", execution: "llm_direct", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.95, reason: "寒暄", contextPolicy: "none" };
   }
   // Target 路由
   const target = resolveTarget(text, ctx);
   if (target.type === "url") {
-    return { intent: "webpage_summary", execution: "url_fetch_pipeline", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.9, reason: "URL" };
+    return { intent: "webpage_summary", execution: "url_fetch_pipeline", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.9, reason: "URL", contextPolicy: "none" };
   }
   if (target.type === "git_diff") {
-    return { intent: "command_status", execution: "llm_direct", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.9, reason: "diff" };
+    return { intent: "command_status", execution: "llm_direct", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.9, reason: "diff", contextPolicy: "none" };
   }
   if (target.type === "chat_history" && ctx.lastAgentResult && /继续|然后再|接着/i.test(text)) {
-    return { intent: "continue_previous_task", execution: ctx.mode === "readonly" ? "agent_readonly" : "agent_plan", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.85, reason: "继续" };
+    return { intent: "continue_previous_task", execution: ctx.mode === "readonly" ? "agent_readonly" : "agent_plan", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.85, reason: "继续", contextPolicy: "session_state" };
+  }
+  // 短承接词保护:
+  //   确认词(好的/可以/行...) → 始终 small_talk，不启动 Agent
+  //   续事词(继续/接着/帮我...) → 有上下文→继续，无上下文→追问
+  if (/^(好的|可以|行|对|是|嗯|OK|ok|Yes|yes|No|no)$/.test(text)) {
+    return { intent: "small_talk", execution: "llm_direct", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.95, reason: "确认词 → small_talk", contextPolicy: "none" };
+  }
+  if (/^(继续|接着|还需要|需要我|帮我|还要)$/.test(text) && text.length <= 4) {
+    if (ctx.lastAgentResult || ctx.pendingAction) {
+      return { intent: "continue_previous_task", execution: ctx.mode === "readonly" ? "agent_readonly" : "agent_plan", shouldScanProject: false, allowedTools: [], needsClarification: false, confidence: 0.85, reason: "续事词+有上下文→继续", contextPolicy: "session_state" };
+    }
+    return { intent: "unknown", execution: "llm_direct", shouldScanProject: false, allowedTools: [], needsClarification: true, confidence: 0.95, reason: "续事词无上下文 → 追问", contextPolicy: "none" };
   }
   return null;
 }
@@ -235,6 +247,7 @@ export async function llmRouter(
       `- 如果 input 包含 URL 或 target.type=url: intent=webpage_summary, execution=url_fetch_pipeline, shouldScanProject=false\n` +
       `- previous_result_question 仅用于纯记忆型提问("上面说了什么"/"刚才的结论是什么")。如果用户要求核实/对比/检查是否已修复/列出已修改项，这是 audit_task 需要读代码验证, 不是 previous_result_question。execution=agent_readonly。\n` +
       `- 能力询问/纯寒暄 → small_talk 或 capability_question, llm_direct, shouldScanProject=false\n` +
+      `- ⚠️ 短词保护: 确认词("好的"/"可以"/"行"/"对"/"是"/"嗯"/"OK")→small_talk,llm_direct。续事词("继续"/"接着"/"帮我")且无lastAgentResult也无pendingAction时→unknown,llm_direct,needsClarification。禁止走agent_readonly。\n` +
       `\n上下文: ${prompt}\n\n输出JSON:`,
     );
 
@@ -259,6 +272,19 @@ export async function llmRouter(
 }
 
 function fallbackClarification(input: string): RouteDecision {
+  // 短词未知 → 追问，不启动 Agent
+  if (input.trim().length <= 4 && !/审查|优化|报错|修复|解释|说明|测试|TS\d|构建|pipeline|diff|git/i.test(input)) {
+    return {
+      intent: 'unknown',
+      execution: 'llm_direct',
+      shouldScanProject: false,
+      allowedTools: [],
+      needsClarification: true,
+      confidence: 0.9,
+      reason: '短词未知 → 追问而非 Agent',
+    };
+  }
+
   // 无 LLM Router 时的基础探测——不给具体 intent, 但给 Agent 工具
   const isAuditLike = /审查|优化|代码质量|安全漏洞|技术债|架构|分析.*项目/i.test(input);
   const isRepairLike = /TS\d+|报错|修复|类型错误|编译失败|测试失败|\.(ts|tsx):\d+/.test(input);

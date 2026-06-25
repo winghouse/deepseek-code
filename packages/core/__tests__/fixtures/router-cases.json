@@ -526,7 +526,122 @@
     "input": "继续",
     "expected": {
       "execution": "llm_direct",
+      "scanProject": false,
+      "needsClarification": true
+    },
+    "category": "context"
+  },
+  {
+    "input": "继续",
+    "ctx": {
+      "lastAgentResult": {
+        "task": "分析代码安全性",
+        "intent": "audit_task",
+        "execution": "agent_readonly",
+        "summary": "发现3个安全问题",
+        "filesRead": ["packages/core/src/agent/router.ts"],
+        "toolsUsed": ["read_file"],
+        "findings": ["XSS风险", "路径遍历"],
+        "nextSuggestions": ["继续分析修复完成度"],
+        "completedAt": "2026-06-12T10:00:00Z"
+      },
+      "pendingAction": "继续分析修复完成度"
+    },
+    "expected": {
+      "intent": "continue_previous_task",
+      "execution": "agent_readonly",
+      "scanProject": false,
+      "needsClarification": false
+    },
+    "category": "context"
+  },
+  {
+    "input": "继续",
+    "ctx": {
+      "lastAgentResult": null,
+      "pendingAction": null
+    },
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false,
+      "needsClarification": true
+    },
+    "category": "context"
+  },
+  {
+    "input": "好的",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
       "scanProject": false
+    },
+    "category": "context"
+  },
+  {
+    "input": "可以",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "context"
+  },
+  {
+    "input": "行",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "context"
+  },
+  {
+    "input": "嗯",
+    "expected": {
+      "intent": "small_talk",
+      "execution": "llm_direct",
+      "scanProject": false
+    },
+    "category": "context"
+  },
+  {
+    "input": "帮我",
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false,
+      "needsClarification": true
+    },
+    "category": "context"
+  },
+  {
+    "input": "帮我",
+    "ctx": {
+      "lastAgentResult": {
+        "task": "重构认证模块",
+        "intent": "code_task",
+        "execution": "agent_readonly",
+        "summary": "已完成认证重构",
+        "filesRead": ["packages/core/src/agent/loop.ts"],
+        "toolsUsed": ["read_file", "read_file_range"],
+        "findings": ["类型定义需要更新"],
+        "nextSuggestions": ["帮我更新类型定义"],
+        "completedAt": "2026-06-12T10:00:00Z"
+      }
+    },
+    "expected": {
+      "intent": "continue_previous_task",
+      "execution": "agent_readonly",
+      "scanProject": false,
+      "needsClarification": false
+    },
+    "category": "context"
+  },
+  {
+    "input": "接着",
+    "expected": {
+      "execution": "llm_direct",
+      "scanProject": false,
+      "needsClarification": true
     },
     "category": "context"
   },

@@ -20,6 +20,12 @@ export interface ModelClient {
     messages: ChatMessage[],
     options?: ChatOptions,
   ): AsyncGenerator<string, void, unknown>;
+
+  /** 流式文本 + 累积 tool_calls → 返回完整 ModelResponse */
+  chatWithStreamingText(
+    messages: ChatMessage[],
+    options?: ChatOptions,
+  ): Promise<ModelResponse>;
 }
 
 /** Chat 请求选项 */

@@ -74,6 +74,15 @@ describe('validateReportAnchors', () => {
     expect(r.fakePaths).toContain('fake-file.ts');
   });
 
+  it('中文行号格式 `文件 第5行` → 通过', () => {
+    const r = validateReportAnchors(
+      'packages/core/src/agent/router.ts 第 120 行需要优化',
+      known, { allowShortAnswer: false },
+    );
+    expect(r.valid).toBe(true);
+    expect(r.citedWithLineCount).toBe(1);
+  });
+
   it('Windows 反斜杠路径 → 通过', () => {
     const knownWin = ['packages\\core\\src\\agent\\router.ts'];
     const r = validateReportAnchors('[router.ts:120] 问题', knownWin, { allowShortAnswer: false });
@@ -117,5 +126,87 @@ describe('buildDegradedReport', () => {
     const r = buildDegradedReport(['router.ts', 'loop.ts']);
     expect(r).toContain('router.ts');
     expect(r).toContain('未能生成');
+  });
+});
+
+// ═══ findings 交叉校验 ═══
+describe('validateReportAnchors with findings', () => {
+  const known = ['packages/core/src/agent/router.ts', 'packages/core/src/agent/loop.ts'];
+  const findings = [
+    { file: 'packages/core/src/agent/router.ts', line: 120 },
+    { file: 'packages/core/src/agent/loop.ts', line: 350 },
+  ];
+
+  it('报告中引用匹配 findings → 通过', () => {
+    const r = validateReportAnchors(
+      '[packages/core/src/agent/router.ts:120] 路由优化 [packages/core/src/agent/loop.ts:350] 空响应',
+      known, { allowShortAnswer: false, findings },
+    );
+    expect(r.valid).toBe(true);
+  });
+
+  it('报告中引用不匹配 findings → unmatched_findings', () => {
+    const r = validateReportAnchors(
+      '[packages/core/src/agent/router.ts:999] 不存在的问题 [packages/core/src/agent/loop.ts:888] 另一个不存在',
+      known, { allowShortAnswer: false, findings },
+    );
+    expect(r.valid).toBe(false);
+    expect(r.reason).toBe('unmatched_findings');
+  });
+
+  it('无 findings 时不触发 unmatched_findings', () => {
+    const r = validateReportAnchors(
+      '[packages/core/src/agent/router.ts:120] 问题',
+      known, { allowShortAnswer: false },
+    );
+    expect(r.valid).toBe(true);
+  });
+
+  it('行号偏移±3 仍算匹配', () => {
+    const r = validateReportAnchors(
+      '[packages/core/src/agent/router.ts:122] 问题',
+      known, { allowShortAnswer: false, findings },
+    );
+    expect(r.valid).toBe(true);
+  });
+
+  it('30% 不匹配 → 不触发 (边界)', () => {
+    const manyFindings = Array.from({length: 10}, (_, i) => ({ file: 'packages/core/src/agent/router.ts', line: 100 + i }));
+    // 10个引用: 7个匹配, 3个不匹配 = 30% → 不触发
+    const refs = [...Array(7)].map((_, i) => `[packages/core/src/agent/router.ts:${100 + i}] 问题${i}`).join('\n')
+      + '\n[X.ts:1] 不匹配A\n[Y.ts:2] 不匹配B\n[Z.ts:3] 不匹配C';
+    const r = validateReportAnchors(refs, known.concat(['X.ts', 'Y.ts', 'Z.ts']), { allowShortAnswer: false, findings: manyFindings });
+    expect(r.valid).toBe(true);
+  });
+
+  it('31% 不匹配 → 触发 unmatched_findings', () => {
+    const manyFindings = Array.from({length: 6}, (_, i) => ({ file: 'packages/core/src/agent/router.ts', line: 100 + i }));
+    // 6匹配 vs 3不匹配 = 33% → 触发 (因为9条中3条不匹配)
+    const refs = [...Array(6)].map((_, i) => `[packages/core/src/agent/router.ts:${100 + i}] 问题${i}`).join('\n')
+      + '\n[X.ts:1] 不匹配A\n[Y.ts:2] 不匹配B\n[Z.ts:3] 不匹配C';
+    const r = validateReportAnchors(refs, known.concat(['X.ts', 'Y.ts', 'Z.ts']), { allowShortAnswer: false, findings: manyFindings });
+    expect(r.valid).toBe(false);
+    expect(r.reason).toBe('unmatched_findings');
+  });
+
+  it('中文行号匹配 findings → 通过', () => {
+    const r = validateReportAnchors(
+      'packages/core/src/agent/router.ts 第120行 路由有问题',
+      known, { allowShortAnswer: false, findings },
+    );
+    expect(r.valid).toBe(true);
+    expect(r.citedWithLineCount).toBe(1);
+  });
+
+  it('中文行号不匹配 findings → 触发 unmatched_findings', () => {
+    // findings 只有 router.ts:120，报告用中文格式引用 router.ts 第999行 → 应触发
+    const r = validateReportAnchors(
+      'packages/core/src/agent/router.ts 第999行 不存在的问题',
+      known, { allowShortAnswer: false, findings },
+    );
+    expect(r.valid).toBe(false);
+    expect(r.reason).toBe('unmatched_findings');
+    expect(r.unmatchedRefs).toBeDefined();
+    expect(r.unmatchedRefs![0]).toContain('999');
   });
 });

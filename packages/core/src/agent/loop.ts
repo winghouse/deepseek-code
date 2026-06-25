@@ -41,6 +41,8 @@ export interface AgentConfig {
   streaming?: boolean;
   /** 恢复指定会话 ID（跳过计划阶段，直接继续执行） */
   resumeSessionId?: string;
+  /** KV Cache 策略: 控制上下文注入级别 */
+  contextPolicy?: 'none' | 'session_state' | 'project_summary' | 'project_slices' | 'full_agent';
 }
 
 export interface AgentResult {
@@ -196,28 +198,77 @@ export async function runAgentLoop(
   console.log('');
 
   try {
-    // 4. 扫描项目
-    const scanStart = Date.now();
-    process.stdout.write('🔍 扫描项目... ');
-    const repoInfo = await scanRepo({ workingDir });
-    session.repoInfo = repoInfo;
-    const repoSummary = buildRepoSummary(repoInfo);
-    console.log(`✅ (${Date.now() - scanStart}ms) → ${repoInfo.techStack.language}${repoInfo.techStack.framework ? ' + ' + repoInfo.techStack.framework : ''}`);
-    console.log('');
+    // 4. 扫描项目 — 按 contextPolicy 控制
+    const skipScan = config.contextPolicy === 'none' || config.contextPolicy === 'session_state';
+    let repoInfo: import('deepseek-code-shared').RepoInfo;
+    let repoSummary = '';
+    if (skipScan) {
+      console.log('⚡ 免扫描模式（contextPolicy: none/session_state）');
+      repoInfo = {
+        name: path.basename(workingDir), rootDir: workingDir,
+        techStack: { language: 'Unknown', framework: null, buildTool: 'unknown', packageManager: 'unknown', runtime: 'Node.js', uiLibrary: null, orm: null, testFramework: null },
+        structure: { hasSrcDir: false, entryFiles: [], routeFiles: [], configFiles: [], keyDirectories: [] },
+        rules: { agentsMd: null, readme: null, packageJson: null, eslintConfig: null, tsconfig: null },
+        git: undefined,
+      };
+    } else {
+      const scanStart = Date.now();
+      process.stdout.write('🔍 扫描项目... ');
+      repoInfo = await scanRepo({ workingDir });
+      session.repoInfo = repoInfo;
+      repoSummary = buildRepoSummary(repoInfo);
+      console.log(`✅ (${Date.now() - scanStart}ms) → ${repoInfo.techStack.language}${repoInfo.techStack.framework ? ' + ' + repoInfo.techStack.framework : ''}`);
+      console.log('');
+    }
 
-    // 5. 生成计划（流式输出）—— 审查/分析任务优先用 RepoMap
+    // 5. 生成计划（流式输出）—— full_agent 注入轻量 repo index（非完整 RepoMap）
     const planStart = Date.now();
     process.stdout.write('📋 生成计划... ');
     const isAuditTask = /审查|审计|分析.*架构|检查.*代码/i.test(taskDescription);
+    const needsRichContext = config.contextPolicy === 'full_agent' || config.contextPolicy === 'project_summary';
     let richContext = repoSummary;
-    if (isAuditTask) {
-      try {
-        const { generateRepoMap, formatRepoMap } = await import('../context/repo-map.js');
-        const repoMap = generateRepoMap({ workingDir, maxDepth: 5, includeImports: true, includeExports: true });
-        richContext = repoSummary + '\n\n' + formatRepoMap(repoMap).slice(0, 8000); // RepoMap 前 8000 字符
-        console.log(`📊 RepoMap: ${repoMap.totalFiles}文件 ~${repoMap.estimatedTokens}tokens`);
-      } catch { /* 降级到基础 repoSummary */ }
+    if (needsRichContext && repoInfo.structure.keyDirectories.length > 0) {
+      // 轻量 index: 目录→入口文件→关键模块，替代完整 RepoMap
+      const indexLines = [
+        '\n## 项目索引 (轻量)',
+        `目录: ${repoInfo.structure.keyDirectories.sort().join(', ')}`,
+        `入口: ${[...repoInfo.structure.entryFiles].sort().join(', ')}`,
+        repoInfo.structure.configFiles.length > 0 ? `配置: ${repoInfo.structure.configFiles.sort().join(', ')}` : '',
+      ].filter(Boolean);
+      if (isAuditTask && config.contextPolicy === 'full_agent') {
+        indexLines.push(
+          '',
+          '审计提示: 请按以下顺序读取关键文件——',
+          '1. package.json / tsconfig → 理解项目配置',
+          '2. 入口文件 → 理解核心逻辑',
+          '3. 安全/权限/认证模块 → 如存在',
+          '4. 数据流/路由层 → 追踪外部输入',
+          '避免盲目扫描全项目。优先聚焦上述文件。',
+        );
+      }
+      richContext = repoSummary + '\n' + indexLines.join('\n');
+      const ctxSize = richContext.length;
+      console.log(`📊 上下文: ${(ctxSize/1000).toFixed(0)}K (summary+index)`);
     }
+    const auditSeed = isAuditTask && config.contextPolicy === 'full_agent'
+      ? await buildAuditSeedContext(tools, workingDir)
+      : { context: '', sequence: [] as string[] };
+    if (auditSeed.context) {
+      richContext += `\n\n${auditSeed.context}`;
+      (session as any).__auditSeedToolSequence = auditSeed.sequence;
+      console.log(`🎯 Audit seed: ${auditSeed.sequence.join(' → ')}`);
+    }
+
+    const isRepairTask = /报错|异常|失败|堆栈|stack trace|TS\d+|Cannot find module|TypeError|ReferenceError|SyntaxError|运行时错误|崩溃|crash|解析失败|JSON.*无效|配置.*无效|配置解析/i.test(taskDescription) && !isAuditTask;
+    const repairSeed = isRepairTask && config.contextPolicy !== 'none'
+      ? await buildRepairSeedContext(taskDescription, tools, workingDir)
+      : { context: '', sequence: [] as string[] };
+    if (repairSeed.context) {
+      richContext += `\n\n${repairSeed.context}`;
+      (session as any).__auditSeedToolSequence = repairSeed.sequence;
+      console.log(`🔧 Repair seed: ${repairSeed.sequence.join(' → ')}`);
+    }
+
     const planResult = await generatePlanWithStreaming(router.flash, repoInfo, taskDescription, richContext, streaming, readOnly ? 'readonly' : 'ask');
     const plan = planResult.plan;
     const planMs = Date.now() - planStart;
@@ -250,59 +301,23 @@ export async function runAgentLoop(
       phase: session.phase,
       knownFiles: session.knownFiles,
       mode: readOnly ? 'readonly' : 'ask',
-      userInput: taskDescription,
+      userInput: auditSeed.context ? `${taskDescription}\n\n${auditSeed.context}` : taskDescription,
     });
     logPrefixHashes(promptResult.hashes);
+    (session as any).__prefixHashes = promptResult.hashes;
+    (session as any).__contextPolicy = config.contextPolicy ?? 'full_agent';
 
     const messages: ChatMessage[] = [
       { role: 'system', content: promptResult.layers.globalPrefix + '\n\n' + promptResult.layers.runtimePrefix + '\n\n' + promptResult.layers.projectPrefix + '\n\n' + promptResult.layers.sessionPrefix + '\n\n' + promptResult.layers.dynamicTail },
     ];
 
-    // 修复完成度复核: 真正执行 pipeline 而非仅注入策略提示
-    const { isFixVerificationTask: isFV, extractBaselineFromSession: extractBL, runFixVerification: runFV } = await import('../tools/fix-verification.js');
-    if (isFV(taskDescription)) {
-      // 1. 提取历史问题基线
-      let baseline = extractBL(session);
-
-      // 2. 如果当前 session 无基线 → 查找最后一次有 findings 的 session
-      if (baseline.length === 0) {
-        try {
-          const recentSessions = await memory.listSessions();
-          for (const s of recentSessions.slice(0, 5)) {
-            const full = await memory.loadSession(s.id);
-            if (full && full.steps) {
-              const bl = extractBL(full);
-              if (bl.length > 0) { baseline = bl; break; }
-            }
-          }
-        } catch { /* 无历史基线 */ }
-      }
-
-      // 3. 获取 git diff 和 log 证据
-      let gitDiff = '', gitLog = '';
-      try {
-        const { execa } = await import('execa');
-        gitDiff = ((await execa('git', ['diff'], { cwd: workingDir, timeout: 10_000, reject: false })).stdout || '').slice(0, 20_000);
-        gitLog = ((await execa('git', ['log', '--oneline', '-10'], { cwd: workingDir, timeout: 10_000, reject: false })).stdout || '');
-      } catch { /* git 不可用 */ }
-
-      // 4. 执行结构化复核
-      const fvResult = runFV(baseline, gitDiff, gitLog);
-      session.__fvResult = fvResult as unknown as Record<string, unknown>; // 保存用于最终输出覆盖
-
-      // 5. 注入结果到 messages——模型基于真实数据做最终判断
-      let fvText = '## 修复完成度复核（自动对比）\n\n';
-      if (fvResult.fixed.length > 0) fvText += `✅ 已修复(${fvResult.fixed.length}): ${fvResult.fixed.map(f => f.title).join('; ')}\n`;
-      if (fvResult.partial.length > 0) fvText += `⚠️ 部分修复(${fvResult.partial.length}): ${fvResult.partial.map(f => f.title).join('; ')}\n`;
-      if (fvResult.unresolved.length > 0) fvText += `❌ 未修复(${fvResult.unresolved.length}): ${fvResult.unresolved.map(f => f.title).join('; ')}\n`;
-      if (fvResult.unknown.length > 0) fvText += `❓ 无法确认(${fvResult.unknown.length}): ${fvResult.unknown.map(f => f.title).join('; ')}\n`;
-      if (gitDiff) fvText += `\ngit_diff: 有变更 (${gitDiff.length} 字符)`;
-      if (gitLog) fvText += `\ngit_log: ${gitLog.split('\n').filter(Boolean).length} 条提交`;
-
-      messages.unshift({
-        role: 'system',
-        content: `这是修复完成度复核任务。以下数据来自程序自动对比（非模型推测）：\n${fvText}\n\n请基于以上数据验证并补充细节，输出格式:\n✅ 已确认修复: [问题] — 证据: [文件/提交]\n⚠️ 部分修复: [问题] — 缺了什么\n❌ 仍未修复: [问题]\n❓ 无法确认: [问题] — 缺少什么信息`,
-      });
+    // 修复完成度复核：收敛到 runFixVerificationFlow()
+    const { runFixVerificationFlow: runFVFlow } = await import('../tools/fix-verification.js');
+    const fvFlow = await runFVFlow({ session, workingDir, taskDescription, memory });
+    if (fvFlow) {
+      session.__fvResult = fvFlow.fvResult as unknown as Record<string, unknown>;
+      session.__fvTrend = fvFlow.trendLines;
+      messages.unshift(fvFlow.systemMessage!);
     }
 
     // 8. 进入执行循环
@@ -358,7 +373,10 @@ export async function continueLoop(
   }
 
   // KV Cache 累计统计
-  let totalPrompt = 0, totalCache = 0, totalCompletion = 0, flashCalls = 0, proCalls = 0, toolCallCount = 0;
+  const auditSeedSequence = ((session as any).__auditSeedToolSequence as string[] | undefined) ?? [];
+  const toolSequence = [...auditSeedSequence];
+  let totalPrompt = 0, totalCache = 0, totalCacheMiss = 0, totalCompletion = 0, flashCalls = 0, proCalls = 0, toolCallCount = auditSeedSequence.length;
+  const modelCalls: import('deepseek-code-shared').ModelCallStats[] = [];
 
   try {
     while (stepIndex < maxSteps && !taskComplete) {
@@ -372,23 +390,55 @@ export async function continueLoop(
         });
       }
 
+      // 审计首轮预防: 在模型调用前注入工具策略提示
+      if (stepIndex === 1 && (session as any).__contextPolicy === 'full_agent' && /审查|审计/i.test(session.taskDescription)) {
+        messages.push({
+          role: 'user',
+          content: '请先基于已注入的 seed context (package.json/rules/git status/diff) 使用 search_code 按关键词定位目标文件，然后 read_file 读取。不要先用 glob/list_files 全仓列目录。',
+        });
+      }
+
       // DeepSeek V4: 审查/审计任务提升推理深度
       const isAudit = /审查|审计|检查.*优化|代码质量|安全.*漏洞|架构.*问题/i.test(session.taskDescription);
-      const response = await withSpinner(
-        model.chat(messages, {
-          tools: availableTools,
-          temperature: 0.3,
-          // high 会严重挤压输出 token 空间 → 只用 medium
-          reasoningEffort: isAudit ? 'medium' : undefined,
-          toolChoice: 'auto',
-        }),
-        '模型思考中',
-      );
+      // 流式输出思考过程, tool_calls 缓冲后返回完整响应
+      const callStart = Date.now();
+      const response = await model.chatWithStreamingText(messages, {
+        tools: availableTools,
+        temperature: 0.3,
+        reasoningEffort: isAudit ? 'medium' : undefined,
+        toolChoice: 'auto',
+      });
+      const callLatency = Date.now() - callStart;
 
       // 模型调用统计
-      if (model.modelName.includes('flash')) flashCalls++; else proCalls++;
+      const isFlash = model.modelName.includes('flash');
+      if (isFlash) flashCalls++; else proCalls++;
+      const modelTier = isFlash ? 'deepseek-v4-flash' : 'deepseek-v4-pro';
+      const perCallCost = calcCallCost(modelTier, response.usage);
+      modelCalls.push({
+        model: modelTier,
+        route: (session as any).__contextPolicy ?? 'full_agent',
+        contextPolicy: (session as any).__contextPolicy ?? 'full_agent',
+        prefixHashes: (session as any).__prefixHashes ? {
+          global: (session as any).__prefixHashes.globalPrefixHash,
+          runtime: (session as any).__prefixHashes.runtimePrefixHash,
+          project: (session as any).__prefixHashes.projectPrefixHash,
+          session: (session as any).__prefixHashes.sessionPrefixHash,
+        } : undefined,
+        usage: {
+          promptTokens: response.usage.prompt_tokens,
+          completionTokens: response.usage.completion_tokens,
+          totalTokens: response.usage.total_tokens,
+          cacheHitTokens: response.usage.cache_hit_tokens ?? 0,
+          cacheMissTokens: response.usage.cache_miss_tokens ?? (response.usage.prompt_tokens - (response.usage.cache_hit_tokens ?? 0)),
+        },
+        latencyMs: callLatency,
+        costUsd: perCallCost,
+        toolSequence: [...toolSequence],
+      });
       totalPrompt += response.usage.prompt_tokens;
       totalCache += response.usage.cache_hit_tokens ?? 0;
+      totalCacheMiss += response.usage.cache_miss_tokens ?? (response.usage.prompt_tokens - (response.usage.cache_hit_tokens ?? 0));
       totalCompletion += response.usage.completion_tokens;
       const cacheInfo = response.usage.cache_hit_tokens
         ? ` | 缓存: ${((response.usage.cache_hit_tokens / response.usage.prompt_tokens) * 100).toFixed(0)}%`
@@ -409,13 +459,22 @@ export async function continueLoop(
         const alreadyRetried = session.interruptionReason === 'retry_gate';
 
         if (isReportLike && !alreadyRetried) {
-          const v = validateReportAnchors(finalContent, session.knownFiles, { allowShortAnswer: true });
+          const v = validateReportAnchors(finalContent, session.knownFiles, { allowShortAnswer: true, findings: session.findings });
           if (!v.valid) {
             session.interruptionReason = 'retry_gate';
             messages.push({ role: 'user', content: buildRetryPrompt(v) });
             continue;
           }
         }
+        // 从最终报告中提取结构化 Finding（供 fix-verification 复用）
+        if (isReportLike && finalContent.length >= 200) {
+          try {
+            const { extractFindingsFromReport: extr, mergeFindings: mergeF } = await import('../tools/fix-verification.js');
+            const incoming = extr(finalContent, session.id.slice(0, 12));
+            session.findings = mergeF(session.findings, incoming);
+          } catch { /* 提取失败不影响主流程 */ }
+        }
+
         session.steps.push(createStep(stepIndex, 'final', finalContent));
         messages.push({ role: 'assistant', content: finalContent });
 
@@ -446,31 +505,43 @@ export async function continueLoop(
           const phase1Ms = Date.now() - phase1Start;
 
           // Phase 2: 详细报告（前缀稳定 → KV Cache 命中）
+          // 瘦身: 不传完整工具结果，只传 system prompt + Phase1 + findings + knownFiles
           process.stdout.write('📋 详细分析:\n');
           const phase2Start = Date.now();
-          messages.push({ role: 'user', content: '输出分析报告。\n\n🔴 优先修复 (P0:运行时故障/安全漏洞, 最多3条)\n🟡 短期改进 (P1:回归风险/技术债, 最多3条)\n🟢 长期优化 (P2:架构改进, 最多3条)\n⚪ 风格建议 (P3:代码规范, 最多2条)\n\n铁律1-事实锚定: 每条发现必须写 [真实文件:行号]。你只能引用已读到的文件路径。未读取的文件不准出现在报告中。不准编造扩展名(package.json不能写成package.js)。没有文件:行号的发现直接删除，不要输出。\n铁律2-验证: P0/P1必须写你的验证方式。推测的降P2+[未验证]。\n铁律3-归并: 同类合并(多文件as any→1条"类型安全债务")。\n铁律4-克制: 某级无内容写"无"。不列清单。\n\n格式: [文件:行号] 问题 → 风险 → 验证 → 建议' });
-          // Phase2 生成（先缓冲后校验——通过才展示，不合格不打印原文）
+          const phase2SystemMsg = messages[0] as ChatMessage; // 稳定前缀 system message
+          const findingsCtx = session.findings?.length
+            ? `\n已知发现:\n${session.findings.slice(0, 20).map((f: any) => `- ${f.file || '?'}:${f.line || '?'} ${f.description || f}`).join('\n')}`
+            : '';
+          const knownFilesCtx = session.knownFiles?.length
+            ? `\n已读文件 (${session.knownFiles.length}): ${session.knownFiles.slice(0, 30).join(', ')}`
+            : '';
+          const phase2Messages: ChatMessage[] = [
+            phase2SystemMsg,
+            { role: 'assistant' as const, content: phase1Summary || '分析完成' },
+            { role: 'user' as const, content: `输出分析报告。只基于已读文件和已知发现。\n\n🔴 优先修复 (P0:运行时故障/安全漏洞, 最多3条)\n🟡 短期改进 (P1:回归风险/技术债, 最多3条)\n🟢 长期优化 (P2:架构改进, 最多3条)\n⚪ 风格建议 (P3:代码规范, 最多2条)\n\n铁律1: 每条写 [文件:行号]。只引用已读文件。\n铁律2: P0/P1写验证方式。推测降P2+[未验证]。\n铁律3: 同类归并。\n铁律4: 无内容写"无"。\n${findingsCtx}${knownFilesCtx}` },
+          ];
+
+          // Phase2 生成
           const { validateReportAnchors: v2, buildRetryPrompt: b2, buildDegradedReport: d2 } = await import('./report-validator.js');
           let phase2Text = await streamPhase2Once();
-          let phase2Valid = v2(phase2Text, session.knownFiles, { allowShortAnswer: false });
+          let phase2Valid = v2(phase2Text, session.knownFiles, { allowShortAnswer: false, findings: session.findings });
 
           if (!phase2Valid.valid && phase2Text.trim()) {
             process.stdout.write('  ⚠️ 校验未通过，正在重写...\n');
-            messages.push({ role: 'user', content: b2(phase2Valid) });
+            phase2Messages.push({ role: 'user' as const, content: b2(phase2Valid) });
             phase2Text = await streamPhase2Once();
-            const retryV = v2(phase2Text, session.knownFiles, { allowShortAnswer: false });
+            const retryV = v2(phase2Text, session.knownFiles, { allowShortAnswer: false, findings: session.findings });
             if (!retryV.valid && phase2Text.trim()) {
               console.log('⚠️ Phase2 两次校验不合格，输出降级报告');
               phase2Text = d2(session.knownFiles, phase1Summary);
             }
           }
-          // 展示最终输出（校验通过或降级后）
           process.stdout.write(phase2Text + '\n');
 
           async function streamPhase2Once(): Promise<string> {
             let text = '';
             try {
-              for await (const chunk of model.chatStream(messages, { temperature: 0.3, maxTokens: 2048, disableThinking: true })) {
+              for await (const chunk of model.chatStream(phase2Messages, { temperature: 0.3, maxTokens: 2048, disableThinking: true })) {
                 text += chunk;
               }
             } catch {
@@ -541,6 +612,7 @@ export async function continueLoop(
         const execStart = Date.now();
 
         toolCallCount += toolCallsToExecute.length;
+        for (const tc of toolCallsToExecute) toolSequence.push(tc.function.name);
         if (toolCallsToExecute.length > 1) {
           console.log(`⚡ 并行执行 ${toolCallsToExecute.length} 个工具...`);
           const allResults = await Promise.all(toolCallsToExecute.map(async (tc) => {
@@ -626,6 +698,33 @@ export async function continueLoop(
         for (const { tc, result } of deniedResults) {
           messages.push({ role: 'tool', tool_call_id: tc.id, content: result.content });
         }
+
+        // 审计任务软约束: 首轮禁止全仓 glob/list_files
+        if (stepIndex === 1 && (session as any).__contextPolicy === 'full_agent' && isAudit) {
+          const usedGlob = toolCallsToExecute.some(tc => /^(glob|list_files)$/i.test(tc.function.name));
+          if (usedGlob) {
+            messages.push({
+              role: 'user',
+              content: '请优先基于 seed context (package.json/rules/git diff) 使用 search_code 按关键词定位目标文件，不要先全仓列目录。如果已定位到文件，直接 read_file。',
+            });
+            console.log('  🎯 审计纠偏: glob→search_code');
+          }
+        }
+
+        // 修复任务软约束: 首轮禁止整文件读/全仓扫
+        const isRepair = (session as any).__auditSeedToolSequence?.length > 0
+          && /报错|异常|失败|TS\d+|TypeError|ReferenceError|SyntaxError|解析失败/i.test(session.taskDescription);
+        if (stepIndex === 1 && isRepair) {
+          const usedFullRead = toolCallsToExecute.some(tc => tc.function.name === 'read_file');
+          const usedScan = toolCallsToExecute.some(tc => /^(glob|list_files)$/i.test(tc.function.name));
+          if (usedFullRead || usedScan) {
+            messages.push({
+              role: 'user',
+              content: 'Seed context 已提供精确的 file:line 和 git_diff。请不要整文件读取(read_file)或全仓扫描(list_files/glob)。如需补充，只用 read_file_range 精读或 search_code 搜索。直接基于 seed 分析输出。',
+            });
+            console.log('  🔧 修复纠偏: read_file→read_file_range');
+          }
+        }
       } else {
         const thinking = (response.content ?? '') || '(模型思考中...)';
         session.steps.push(createStep(stepIndex, 'thinking', thinking.slice(0, 500)));
@@ -647,14 +746,22 @@ export async function continueLoop(
 
     // 修复完成度复核: 结构化结果直接写入, 不靠模型输出
     const fvResult = session.__fvResult as import('../tools/fix-verification.js').FixVerificationResult | undefined;
+    const { GAP_LABELS: GL } = await import('../tools/fix-verification.js');
     if (fvResult) {
       const lines = ['## 修复完成度复核\n'];
-      if (fvResult.fixed.length > 0) lines.push(`\n✅ 已确认修复 (${fvResult.fixed.length}):\n${fvResult.fixed.map(f => `  - ${f.title}\n    证据: ${f.evidence.join('; ')}`).join('\n')}`);
-      if (fvResult.partial.length > 0) lines.push(`\n⚠️ 部分修复 (${fvResult.partial.length}):\n${fvResult.partial.map(f => `  - ${f.title}\n    ${f.reason}`).join('\n')}`);
-      if (fvResult.unresolved.length > 0) lines.push(`\n❌ 仍未修复 (${fvResult.unresolved.length}):\n${fvResult.unresolved.map(f => `  - ${f.title}`).join('\n')}`);
+      const trend = session.__fvTrend;
+      if (trend && trend.length > 0) lines.push(...trend);
+      lines.push('*信号: diff=diff命中 log=提交命中 test=关联测试变更*\n');
+
+      const strongFixes = fvResult.fixed.filter(f => f.evidenceLevel === 'strong');
+      const mediumFixes = fvResult.fixed.filter(f => f.evidenceLevel === 'medium');
+      if (strongFixes.length > 0) lines.push(`\n✅ 已确认修复 (${strongFixes.length}):\n${strongFixes.map(f => `  - ${f.title} [${signalsLabel(f.fixSignals)}]\n    证据: ${f.evidence.join('; ')}`).join('\n')}`);
+      if (mediumFixes.length > 0) lines.push(`\n🟡 基本修复 (${mediumFixes.length}):\n${mediumFixes.map(f => `  - ${f.title} [${signalsLabel(f.fixSignals)}]\n    证据: ${f.evidence.join('; ')}\n    缺口: ${GL[f.gapReason || ''] || '未知'}`).join('\n')}`);
+      if (fvResult.partial.length > 0) lines.push(`\n⚠️ 部分修复 (${fvResult.partial.length}):\n${fvResult.partial.map(f => `  - ${f.title} [${signalsLabel(f.fixSignals)}]\n    ${f.reason}\n    缺口: ${GL[f.gapReason || ''] || '未知'}`).join('\n')}`);
+      if (fvResult.unresolved.length > 0) lines.push(`\n❌ 仍未修复 (${fvResult.unresolved.length}):\n${fvResult.unresolved.map(f => `  - ${f.title} [${f.evidenceLevel}]`).join('\n')}`);
       if (fvResult.unknown.length > 0) lines.push(`\n❓ 无法确认 (${fvResult.unknown.length}):\n${fvResult.unknown.map(f => `  - ${f.title}\n    ${f.reason}`).join('\n')}`);
       summary = lines.join('\n');
-      console.log(`\n📊 修复复核完成: ✅${fvResult.fixed.length} ⚠️${fvResult.partial.length} ❌${fvResult.unresolved.length} ❓${fvResult.unknown.length}`);
+      console.log(`\n📊 修复复核: ✅${strongFixes.length}+🟡${mediumFixes.length} ⚠️${fvResult.partial.length} ❌${fvResult.unresolved.length} ❓${fvResult.unknown.length}`);
     }
 
     session.completed = taskComplete;
@@ -667,12 +774,21 @@ export async function continueLoop(
       totalPromptTokens: totalPrompt,
       totalCompletionTokens: totalCompletion,
       cacheHitTokens: totalCache,
-      cacheMissTokens: totalPrompt - totalCache,
+      cacheMissTokens: totalCacheMiss,
       flashCalls,
       proCalls,
       toolCalls: toolCallCount,
       elapsedMs: Date.now() - startTime,
       estimatedCostUsd: cost,
+      prefixHashes: (session as any).__prefixHashes ? {
+        global: (session as any).__prefixHashes.globalPrefixHash,
+        runtime: (session as any).__prefixHashes.runtimePrefixHash,
+        project: (session as any).__prefixHashes.projectPrefixHash,
+        session: (session as any).__prefixHashes.sessionPrefixHash,
+      } : undefined,
+      modelCalls,
+      toolSequence,
+      auditSeedSequence,
     };
 
     console.log(`\n📊 KV Cache: ${cacheRate}% 命中 (${totalCache}/${totalPrompt} prompt tokens) | 总输出: ${totalCompletion} tokens`);
@@ -697,6 +813,84 @@ export async function continueLoop(
 // ============================================================
 
 /** 生成计划（流式输出步骤描述） */
+async function buildAuditSeedContext(tools: ToolExecutors, workingDir: string): Promise<{ context: string; sequence: string[] }> {
+  const seedCalls: Array<{ name: string; args: Record<string, unknown> }> = [
+    { name: 'read_package_json', args: {} },
+    { name: 'read_project_rules', args: {} },
+    { name: 'git_status', args: {} },
+    { name: 'git_diff', args: {} },
+  ];
+
+  const parts: string[] = ['## Audit Seed Context'];
+  const sequence: string[] = [];
+  for (const call of seedCalls) {
+    const result = await executeTool(call.name, call.args, tools, { workingDir, mode: 'readonly' });
+    sequence.push(call.name);
+    const status = result.success ? 'ok' : 'failed';
+    const body = result.success ? result.content : (result.error ?? result.content);
+    parts.push(`### ${call.name} (${status})\n${String(body).slice(0, 4000)}`);
+  }
+
+  parts.push(
+    '',
+    'Audit path rule: prefer targeted read/search based on this seed context. Avoid random whole-repo list/glob scans unless the task explicitly needs them.',
+  );
+  return { context: parts.join('\n'), sequence };
+}
+
+/** Repair seed: 错误定位 → 最小上下文 → git diff */
+async function buildRepairSeedContext(task: string, tools: ToolExecutors, workingDir: string): Promise<{ context: string; sequence: string[] }> {
+  const sequence: string[] = [];
+  const parts: string[] = ['## Repair Seed Context'];
+
+  // 多模式文件路径提取 (优先级: stack trace > file:line > 第N行 > 测试文件)
+  const filePatterns = [
+    /\(([a-zA-Z0-9_/.-]+\.(?:ts|tsx|js|jsx|json|yml|yaml)):(\d+)(?::\d+)?\)/,  // stack trace: at fn (file:line:col)
+    /([a-zA-Z0-9_/.-]+\.(?:ts|tsx|js|jsx|json|yml|yaml))\s*[:(：]\s*(\d+)/,       // file:line or file(123)
+    /([a-zA-Z0-9_/.-]+\.(?:ts|tsx|js|jsx|json|yml|yaml))\s*第\s*(\d+)\s*行/,       // 中文行号: file 第123行
+    /(?:在|at)\s+([a-zA-Z0-9_/.-]+\.(?:ts|tsx|js|jsx|json|yml|yaml))\s*第\s*(\d+)\s*行/i, // 在 file 第N行
+  ];
+  let fileMatch: RegExpMatchArray | null = null;
+  for (const p of filePatterns) {
+    fileMatch = task.match(p);
+    if (fileMatch) break;
+  }
+
+  // 符号/测试名提取
+  const symbolMatch = task.match(/(?:符号|symbol|函数|function|class|export|is not defined|not found)\s+['"]?(\w+)['"]?/i);
+  const testMatch = task.match(/([a-zA-Z0-9_/.-]+\.test\.(?:ts|tsx|js))\b/i);
+  const hasAnchor = fileMatch || symbolMatch || testMatch;
+
+  // 1. git_diff
+  const diffResult = await executeTool('git_diff', {}, tools, { workingDir, mode: 'readonly' });
+  sequence.push('git_diff');
+  parts.push(`### git_diff\n${String(diffResult.content).slice(0, 3000)}`);
+
+  // 2. 精确定位: read_file_range
+  if (fileMatch) {
+    const file = fileMatch[1]; const line = parseInt(fileMatch[2]);
+    const rangeResult = await executeTool('read_file_range', { filePath: file, startLine: Math.max(1, line - 10), endLine: line + 20 }, tools, { workingDir, mode: 'readonly' });
+    sequence.push('read_file_range');
+    parts.push(`### read_file_range ${file} L${Math.max(1, line - 10)}-${line + 20}\n${String(rangeResult.content).slice(0, 4000)}`);
+  }
+
+  // 3. 符号/测试搜索 (只在无精确路径时)
+  const searchTarget = testMatch?.[1] ?? (symbolMatch && !fileMatch ? symbolMatch[1] : null);
+  if (searchTarget) {
+    const searchResult = await executeTool('search_code', { pattern: searchTarget, path: 'packages/' }, tools, { workingDir, mode: 'readonly' });
+    sequence.push('search_code');
+    parts.push(`### search_code "${searchTarget}"\n${String(searchResult.content).slice(0, 3000)}`);
+  }
+
+  // 4. 无锚点 → 要求追问
+  if (!hasAnchor) {
+    parts.push('### ⚠️ 无锚点', '输入中未提取到文件路径、行号、符号名或测试文件名。请追问具体错误信息，不要全仓扫描。');
+  }
+
+  parts.push('', 'Repair rule: read_file_range→search_code→git_diff→readOnly=suggestion');
+  return { context: parts.join('\n'), sequence };
+}
+
 async function generatePlanWithStreaming(
   model: ModelClient,
   repoInfo: import('deepseek-code-shared').RepoInfo,
@@ -888,6 +1082,24 @@ const PRICING = {
   pro: { inputCacheMiss: 0.55, inputCacheHit: 0.14, output: 2.19 },
   flash: { inputCacheMiss: 0.14, inputCacheHit: 0.04, output: 0.55 },
 };
+
+function signalsLabel(s: { diff: boolean; log: boolean; test: boolean }): string {
+  const parts = [];
+  if (s.diff) parts.push('diff');
+  if (s.log) parts.push('log');
+  if (s.test) parts.push('test');
+  return parts.length > 0 ? parts.join('+') : '无信号';
+}
+
+/** 单次模型调用成本（per-call 精确计算） */
+function calcCallCost(model: string, usage: { prompt_tokens: number; completion_tokens: number; cache_hit_tokens?: number; cache_miss_tokens?: number }): number {
+  const tier = model.includes('flash') ? PRICING.flash : PRICING.pro;
+  const hitTokens = usage.cache_hit_tokens ?? 0;
+  const missTokens = (usage.cache_miss_tokens ?? (usage.prompt_tokens - hitTokens));
+  return (missTokens / 1_000_000) * tier.inputCacheMiss
+    + (hitTokens / 1_000_000) * tier.inputCacheHit
+    + (usage.completion_tokens / 1_000_000) * tier.output;
+}
 
 function estimateCost(
   totalPrompt: number, totalCache: number, totalCompletion: number,

@@ -21,8 +21,11 @@ function mockModel(responses: ModelResponse[]): ModelClient {
       };
     },
     async *chatStream(): AsyncGenerator<string> {
-      // 模拟流式不可用 → Agent 自动降级到 chat()
       throw new Error('mock: stream not supported');
+    },
+    async chatWithStreamingText(msgs: ChatMessage[], opts?: ChatOptions): Promise<ModelResponse> {
+      // Mock: 直接委托给 chat()
+      return this.chat(msgs, opts);
     },
   };
 }
